@@ -16,5 +16,85 @@ model User {
   languagePref String   @default("id") @map("language_pref")
   createdAt    DateTime @default(now()) @map("created_at")
 
+  memberships    ConversationMember[]
+  messages       Message[]            @relation("SentMessages")
+  callsAsCaller  CallLog[]            @relation("CallerLogs")
+  callsAsCallee  CallLog[]            @relation("CalleeLogs")
+  contacts       Contact[]            @relation("OwnerContacts")
+  contactOf      Contact[]            @relation("ContactOfUser")
+
   @@map("users")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  type      String   @default("direct") // "direct" | "group"
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members  ConversationMember[]
+  messages Message[]
+
+  @@map("conversations")
+}
+
+model ConversationMember {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  userId         String   @map("user_id")
+  isPinned       Boolean  @default(false) @map("is_pinned")
+  isArchived     Boolean  @default(false) @map("is_archived")
+  isBlocked      Boolean  @default(false) @map("is_blocked")
+  joinedAt       DateTime @default(now()) @map("joined_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_members")
+}
+
+model Message {
+  id             String    @id @default(uuid())
+  conversationId String    @map("conversation_id")
+  senderId       String    @map("sender_id")
+  content        String?
+  type           String    @default("text") // text | image | file | sticker
+  isStarred      Boolean   @default(false) @map("is_starred")
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model CallLog {
+  id        String   @id @default(uuid())
+  callerId  String   @map("caller_id")
+  calleeId  String   @map("callee_id")
+  callType  String   @map("call_type") // voice | video
+  status    String   // missed | answered | rejected
+  duration  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  caller User @relation("CallerLogs", fields: [callerId], references: [id])
+  callee User @relation("CalleeLogs", fields: [calleeId], references: [id])
+
+  @@map("call_logs")
+}
+
+model Contact {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  contactUserId String   @map("contact_user_id")
+  addedAt       DateTime @default(now()) @map("added_at")
+
+  user        User @relation("OwnerContacts", fields: [userId], references: [id], onDelete: Cascade)
+  contactUser User @relation("ContactOfUser", fields: [contactUserId], references: [id])
+
+  @@unique([userId, contactUserId])
+  @@map("contacts")
 }
