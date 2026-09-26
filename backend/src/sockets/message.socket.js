@@ -17,6 +17,7 @@ function registerMessageHandlers(io, socket) {
     } catch (err) {
       socket.emit('message_error', { error: err.message });
     }
+  });
 
   // --- Typing indicator ---
   socket.on('typing_start', ({ conversationId }) => {
