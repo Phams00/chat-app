@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const app = require('./src/app');
 const socketAuthMiddleware = require('./src/sockets/auth.socket');
 const registerMessageHandlers = require('./src/sockets/message.socket');
+const { addOnlineUser, removeOnlineUser } = require('./src/sockets/presence.socket');
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -15,6 +16,8 @@ io.use(socketAuthMiddleware); //supaya setiap koneksi WAJIB lolos token dulu
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  io.emit('user_online', { userId: socket.userId });
 
   registerMessageHandlers(io, socket);
   

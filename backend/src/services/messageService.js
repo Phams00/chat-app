@@ -20,4 +20,19 @@ async function saveMessage(conversationId, senderId, content, type = 'text') {
   });
 }
 
-module.exports = { getMessages, saveMessage };
+async function markAsRead(messageId, userId) {
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new Error('Pesan tidak ditemukan');
+
+  await assertMember(message.conversationId, userId);
+
+  // Hanya update kalau memang belum dibaca — hindari overwrite readAt yang sudah ada
+  if (message.readAt) return message;
+
+  return prisma.message.update({
+    where: { id: messageId },
+    data: { readAt: new Date() },
+  });
+}
+
+module.exports = { getMessages, saveMessage, markAsRead };
