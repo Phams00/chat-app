@@ -1,12 +1,6 @@
 import { useState } from "react";
 import "./ChatRoom.css";
 
-const logoUrl =
-  "https://lh3.googleusercontent.com/aida/AEtjO1UO5JZZwpLdIwq75LV9C_OnKEF9eumBQ-EXz-G9ALU0zI0k8rfPwkhIhxAQKE0_ky1ed56PepsxKPEOZRKFMDPaRpiwT68P6mzUeW6N8Uzf99KYWj5FAnyc6DPCR3UtZnYvc6E3kcEmeXRGwZnWa_yBw2kY0qf5dgV9eYoDojEqAmdOn68t4HDom9qDwuu-MJ2eda0sbKcc4tp8QSrVw5fiPLwXyYh54wKIX4rwRfs1x0shn6fTeP4Ye-Lp";
-
-const profileUrl =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDf3j2YzyN-VOSLOKzYaoVJNbxgjnjajNXEwbiFQySzUtPPRvuCoxpm2K2M2kEYQjUKqMnk66W-CWf7CgQ2FFHJgt-UItWOo3hu456sHFqfe9TyyIi2AtWHXAKJd8lG5QzsLaZLfoIcxwmGyu19NhbsuDwdzjQGz6hpToYJYBwZFTcpoM7OZuoyCqL52VlTQLG4eXvFpHDaEPsAn8nbWr9G1qF_wfcWxR5aKbU7zjUVUuf46ryDWfYH3g";
-
 const mayaUrl =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAFl0EN5eMPp8D2EzGiTfSd5mXSfYT_BGxHMkSS1nzXzrSn29zmv1Xj7tBHMthzROjyrA8ncWu9izh9MDzSO4XVM9vqHJ8JlQsmnVmq4kz4JvWGSh49-mOt9sETmCVUifoIxqmQ2qtCMRbhvXv6OQmCofSUdwGXj3uj5sWIl6TneHvVP2PIUffjkm6XhYebTBIDfu0BqR_kimbgfUDlVehZgxyx94XL-wFRbxRENLXJvmeXQbraAmhl_w";
 
