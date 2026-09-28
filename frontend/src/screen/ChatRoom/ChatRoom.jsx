@@ -11,7 +11,7 @@ function Icon({ children, className = "" }) {
   return <span className={`material-symbols-outlined ${className}`}>{children}</span>;
 }
 
-function ChatRoom() {
+function ChatRoom({ onBack }) {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
@@ -38,7 +38,7 @@ function ChatRoom() {
     <div className="chat-page">
       <div className="chat-app">
         <header className="chat-header">
-  <button className="back-button" aria-label="Kembali">
+  <button className="back-button" aria-label="Kembali" onClick={onBack}>
     <Icon>arrow_back_ios_new</Icon>
   </button>
 
