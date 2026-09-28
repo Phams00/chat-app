@@ -63,4 +63,24 @@ async function assertMember(conversationId, userId) {
   return member;
 }
 
+async function getConversation(conversationId, userId) {
+  await assertMember(conversationId, userId);
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      members: {
+        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+      },
+    },
+  });
+
+  return {
+    conversationId: conversation.id,
+    type: conversation.type,
+    name: conversation.name,
+    members: conversation.members.map((m) => m.user),
+  };
+}
+
 module.exports = { getOrCreateDirectConversation, listConversations, assertMember };

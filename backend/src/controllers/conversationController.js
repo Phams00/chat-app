@@ -32,4 +32,13 @@ async function getMessages(req, res) {
   }
 }
 
-module.exports = { createOrGet, list, getMessages };
+async function getOne(req, res) {
+  try {
+    const conversation = await conversationService.getConversation(req.params.id, req.user.id);
+    res.json(conversation);
+  } catch (err) {
+    res.status(403).json({ error: err.message });
+  }
+}
+
+module.exports = { createOrGet, list, getMessages, getOne };

@@ -22,4 +22,8 @@ function isUserOnline(userId) {
   return onlineUsers.has(userId);
 }
 
-module.exports = { addOnlineUser, removeOnlineUser, isUserOnline };
+function getOnlineUserIds() {
+  return Array.from(onlineUsers.keys());
+}
+
+module.exports = { addOnlineUser, removeOnlineUser, isUserOnline, getOnlineUserIds };

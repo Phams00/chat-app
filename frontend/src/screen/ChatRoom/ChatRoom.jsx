@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import { getSocket } from '../../services/socket';
+import usePresenceStore from '../../store/presenceStore';
+
+
 
 function ChatRoom() {
   const { id: conversationId } = useParams();
@@ -13,6 +16,8 @@ function ChatRoom() {
   const navigate = useNavigate();
   const socket = getSocket();
   const typingTimeoutRef = useRef(null);
+  const [otherUser, setOtherUser] = useState(null);
+  const onlineUsers = usePresenceStore((s) => s.onlineUsers);
 
   useEffect(() => {
     fetchHistory();
