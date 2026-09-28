@@ -722,6 +722,7 @@ button {
   }
 
   .chat-main {
+    height: calc(100dvh - 72px);
     min-height: calc(100dvh - 72px);
   }
 
@@ -785,10 +786,37 @@ button {
 }
 
 @media (max-width: 767px) {
+  .chat-page {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .chat-app {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .chat-main {
+    height: calc(100dvh - 76px);
+    min-height: 0;
+  }
+
+  .messages {
+    min-height: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .message-dock,
   .attachment-drawer {
     position: fixed;
     width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-main {
+    height: calc(100dvh - 72px);
   }
 }
 
