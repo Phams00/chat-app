@@ -3,21 +3,24 @@ require('dotenv').config();
 const http = require('http');
 const { Server } = require('socket.io');
 const app = require('./src/app');
+const socketAuthMiddleware = require('./src/sockets/auth.socket');
+const registerMessageHandlers = require('./src/sockets/message.socket');
+const { addOnlineUser, removeOnlineUser } = require('./src/sockets/presence.socket');
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' } // sementara izinkan semua, nanti dipersempit
 });
 
+io.use(socketAuthMiddleware); //supaya setiap koneksi WAJIB lolos token dulu
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // event dummy untuk tes koneksi
-  socket.on('ping_test', (data) => {
-    console.log('Diterima dari client:', data);
-    socket.emit('pong_test', { message: 'Halo dari backend!' });
-  });
+  io.emit('user_online', { userId: socket.userId });
 
+  registerMessageHandlers(io, socket);
+  
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
