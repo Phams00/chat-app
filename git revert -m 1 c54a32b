@@ -1,0 +1,12 @@
+*   [33mc544a2b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfront-end-text1[m[33m)[m Merge branch 'main' into front-end-text1
+[31m|[m[32m\[m  
+[31m|[m * [33m7dbe535[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m fix: typo di kode
+[31m|[m * [33m2ec7e78[m feat: presence, jadi bisa liat kontak sedang online atau tidak, lalu fitur kalau dia lagi ngetik, maka akan muncul status mengetik, dab fitur sudah terbaca atau belum
+[31m|[m * [33m4bea620[m feat: api untk message dan conversation, untuk list conver dan message. sudah bisa realtime chat pake socket. ada tes aplikasi di front end, di app.jsx, di situ ada prototype dari apk tanpa ui fix: docs: kalau mau dijalanin pastikan kedua frontend dan backend sudah di run. db harus sudah di compose dan npx prisma migrate
+[31m|[m * [33ma25e668[m feat: contact api
+[31m|[m * [33m1e25741[m feat: middleware sistem token untuk login fix: api tidak tersambung
+[31m|[m * [33m3f70a39[m feat: api auth untuk login dan register
+[31m|[m * [33m065bc1e[m feat: melengkapi tabel
+* [32m|[m [33medd3b02[m fix: adjust chat layout for better responsiveness on mobile devices anu, yang mobile headernya ruangan ngobrol, nempel sekarang.
+* [32m|[m [33m86c6cf0[m feat: refactor struktur dan style aplikasi chat
+[32m|[m[32m/[m  
