@@ -1,168 +1,184 @@
-import { useState } from "react";
-import "./ChatRoom.css";
+import { useEffect, useState, useRef, useSyncExternalStore } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import api from '../../services/api';
+import useAuthStore from '../../store/authStore';
+import usePresenceStore from '../../store/presenceStore';
+import { connectSocket, getSocket, subscribeSocket } from '../../services/socket';
+import './ChatRoom.css';
 
-const mayaUrl =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAFl0EN5eMPp8D2EzGiTfSd5mXSfYT_BGxHMkSS1nzXzrSn29zmv1Xj7tBHMthzROjyrA8ncWu9izh9MDzSO4XVM9vqHJ8JlQsmnVmq4kz4JvWGSh49-mOt9sETmCVUifoIxqmQ2qtCMRbhvXv6OQmCofSUdwGXj3uj5sWIl6TneHvVP2PIUffjkm6XhYebTBIDfu0BqR_kimbgfUDlVehZgxyx94XL-wFRbxRENLXJvmeXQbraAmhl_w";
-
-const cafeUrl =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDcY2lK0o4xRx3RmiJmqrL9D57Yv32nOSUuFT4jJBzurJwtC6XL4HArgrAKTPz3MPDVgRh9wfI1fkT9oxXxYdd9Cm9c8b-j1fGwDQt5Lx-JkzUK4mwnPwo7_SYGrxqN2NeMNxQItz2XbT_M3sl2r5etgJIgluzHa8UU0YsNWhL7YHkvr66-QhexsiOrurrUFCWgTRpN3qgHsO38tqUhs5I9DyeEaGlQHhs1hKneHUT5Y6rRrZcvecaw9Q";
-
-function Icon({ children, className = "" }) {
+function Icon({ children, className = '' }) {
   return <span className={`material-symbols-outlined ${className}`}>{children}</span>;
 }
 
-function ChatRoom({ onBack }) {
-  const [message, setMessage] = useState("");
+function formatTime(dateStr) {
+  return new Date(dateStr).toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function ChatRoom() {
+  const { id: conversationId } = useParams();
+  const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const onlineUsers = usePresenceStore((s) => s.onlineUsers);
+
+  const [otherUser, setOtherUser] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState('');
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
-  const [playingVoice, setPlayingVoice] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const socket = useSyncExternalStore(subscribeSocket, getSocket, getSocket);
+  const typingTimeoutRef = useRef(null);
 
-  const sendMessage = (e) => {
+  const isOnline = otherUser && onlineUsers.has(otherUser.id);
+
+  useEffect(() => {
+    connectSocket(token);
+  }, [token]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadConversation() {
+      try {
+        const [conversationRes, messagesRes] = await Promise.all([
+          api.get(`/conversations/${conversationId}`),
+          api.get(`/conversations/${conversationId}/messages`),
+        ]);
+        if (!active) return;
+        const other = conversationRes.data.members.find((member) => member.id !== currentUserId);
+        setOtherUser(other || null);
+        setMessages(messagesRes.data);
+      } catch {
+        if (active) navigate('/');
+      }
+    }
+
+    loadConversation();
+    return () => { active = false; };
+  }, [conversationId, currentUserId, navigate]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+
+    socket.emit('join_conversation', conversationId);
+
+    function handleNewMessage(msg) {
+      setMessages((prev) => [...prev, msg]);
+      if (msg.sender.id !== currentUserId) {
+        socket.emit('mark_as_read', { conversationId, messageId: msg.id });
+      }
+    }
+    function handleUserTyping() { setOtherTyping(true); }
+    function handleUserStopTyping() { setOtherTyping(false); }
+    function handleMessageRead({ messageId, readAt }) {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, readAt } : m)));
+    }
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('user_stop_typing', handleUserStopTyping);
+    socket.on('message_read', handleMessageRead);
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('user_stop_typing', handleUserStopTyping);
+      socket.off('message_read', handleMessageRead);
+      socket.emit('leave_conversation', conversationId);
+    };
+  }, [conversationId, currentUserId, socket]);
+
+  function handleTextChange(e) {
+    setMessage(e.target.value);
+    if (!socket) return;
+    socket.emit('typing_start', { conversationId });
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit('typing_stop', { conversationId });
+    }, 1500);
+  }
+
+  function sendMessage(e) {
     e?.preventDefault();
-
     const text = message.trim();
-    if (!text) return;
+    if (!text || !socket) return;
 
-    const now = new Date();
-    const time = now.toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setMessages((prev) => [...prev, { text, time }]);
-    setMessage("");
+    socket.emit('send_message', { conversationId, content: text, type: 'text' });
+    socket.emit('typing_stop', { conversationId });
+    setMessage('');
     setAttachmentsOpen(false);
-  };
+  }
+
+  const avatarUrl =
+    otherUser?.avatarUrl ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(otherUser?.name || '?')}&background=ff5e00&color=fff`;
 
   return (
     <div className="chat-page">
       <div className="chat-app">
         <header className="chat-header">
-  <button className="back-button" aria-label="Kembali" onClick={onBack}>
-    <Icon>arrow_back_ios_new</Icon>
-  </button>
+          <button className="back-button" aria-label="Kembali" onClick={() => navigate('/')}>
+            <Icon>arrow_back_ios_new</Icon>
+          </button>
 
-  <div className="chat-contact">
-    <div className="chat-avatar">
-      <img src={mayaUrl} alt="Maya Salsabila" />
-      <span className="online-dot" />
-    </div>
+          <div className="chat-contact">
+            <div className="chat-avatar">
+              <img src={avatarUrl} alt={otherUser?.name || 'Avatar'} />
+              {isOnline && <span className="online-dot" />}
+            </div>
 
-    <div className="chat-contact-info">
-      <div className="chat-contact-name">
-        Maya Salsabila
-        <Icon className="verified">verified</Icon>
-      </div>
+            <div className="chat-contact-info">
+              <div className="chat-contact-name">{otherUser?.name || '...'}</div>
+              <div className="chat-contact-status">
+                <span className="status-dot" style={{ background: isOnline ? '#16b981' : '#9a9a9a' }} />
+                {otherTyping ? 'Mengetik...' : isOnline ? 'Online' : 'Offline'}
+              </div>
+            </div>
+          </div>
 
-      <div className="chat-contact-status">
-        <span className="status-dot" />
-        Online • Mengetik...
-      </div>
-    </div>
-  </div>
+          <div className="chat-actions">
+            <button aria-label="Video call" disabled title="Fitur panggilan belum tersedia">
+              <Icon>videocam</Icon>
+            </button>
+            <button aria-label="Telepon" disabled title="Fitur panggilan belum tersedia">
+              <Icon>call</Icon>
+            </button>
+            <button aria-label="Menu">
+              <Icon>more_vert</Icon>
+            </button>
+          </div>
+        </header>
 
-  <div className="chat-actions">
-    <button aria-label="Video call">
-      <Icon>videocam</Icon>
-    </button>
-
-    <button aria-label="Telepon">
-      <Icon>call</Icon>
-    </button>
-
-    <button aria-label="Menu">
-      <Icon>more_vert</Icon>
-    </button>
-  </div>
-</header>
-
-<main className="chat-main">
-
+        <main className="chat-main">
           <section className="messages">
             <div className="date-pill">HARI INI</div>
 
-            <div className="message incoming">
-              <p>Halo! Nanti sore kita jadi ngopi di cafe biasa kan? ☕✨</p>
-              <span>15:42</span>
-            </div>
-
-            <div className="message outgoing">
-              <p>
-                Jadi dong! Aku lagi selesaikan revisi desain aplikasi sebentar.
-                Siap meluncur jam 4! 🚀
-              </p>
-              <span>
-                15:44 <Icon>done_all</Icon>
-              </span>
-            </div>
-
-            <div className="cafe-card">
-              <div className="cafe-image-wrap">
-                <img src={cafeUrl} alt="Cafe" />
-                <span className="cafe-tag">
-                  <Icon>local_cafe</Icon>
-                  Artisan Spot
-                </span>
-              </div>
-
-              <p>
-                Tempatnya baru didekor ulang lho, lucu banget! Spot favorit kita
-                di pojokan masih kosong nih.
-              </p>
-
-              <div className="reaction">💗 1</div>
-              <span className="cafe-time">15:46</span>
-            </div>
-
-            <div className="voice-message">
-              <button
-                className="voice-play"
-                aria-label="Putar rekaman"
-                onClick={() => setPlayingVoice((value) => !value)}
-              >
-                <Icon>{playingVoice ? "pause" : "play_arrow"}</Icon>
-              </button>
-
-              <div className="voice-content">
-                <div className="wave">
-                  {[3, 5, 7, 4, 6, 8, 5, 7, 4, 6, 8, 3, 5, 7, 4, 6].map(
-                    (height, index) => (
-                      <span
-                        key={index}
-                        style={{ height: `${height * 3}px` }}
-                      />
-                    )
-                  )}
-                </div>
-
-                <div className="voice-meta">
-                  <span>0:18</span>
+            {messages.map((msg) => {
+              const isMine = msg.sender.id === currentUserId;
+              return (
+                <div className={`message ${isMine ? 'outgoing' : 'incoming'}`} key={msg.id}>
+                  <p>{msg.content}</p>
                   <span>
-                    15:48 <Icon>done_all</Icon>
+                    {formatTime(msg.createdAt)}
+                    {isMine && <Icon>{msg.readAt ? 'done_all' : 'done'}</Icon>}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            {messages.map((item, index) => (
-              <div className="message outgoing" key={`${item.time}-${index}`}>
-                <p>{item.text}</p>
-                <span>
-                  {item.time} <Icon>done</Icon>
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </section>
 
           {attachmentsOpen && (
             <div className="attachment-drawer">
               {[
-                ["photo_camera", "Kamera"],
-                ["image", "Galeri"],
-                ["description", "Dokumen"],
-                ["location_on", "Lokasi"],
+                ['photo_camera', 'Kamera'],
+                ['image', 'Galeri'],
+                ['description', 'Dokumen'],
+                ['location_on', 'Lokasi'],
               ].map(([icon, label]) => (
-                <button key={label}>
+                <button key={label} disabled title="Belum tersedia">
                   <span className="attachment-icon">
                     <Icon>{icon}</Icon>
                   </span>
@@ -175,35 +191,27 @@ function ChatRoom({ onBack }) {
           <form className="message-dock" onSubmit={sendMessage}>
             <button
               type="button"
-              className={`round-action ${attachmentsOpen ? "active" : ""}`}
+              className={`round-action ${attachmentsOpen ? 'active' : ''}`}
               aria-label="Lampiran"
-              onClick={() => setAttachmentsOpen((value) => !value)}
+              onClick={() => setAttachmentsOpen((v) => !v)}
             >
-              <Icon>{attachmentsOpen ? "close" : "add"}</Icon>
+              <Icon>{attachmentsOpen ? 'close' : 'add'}</Icon>
             </button>
 
             <div className="input-pill">
-              <button type="button" aria-label="Emoji">
+              <button type="button" aria-label="Emoji" disabled title="Belum tersedia">
                 <Icon>sentiment_satisfied</Icon>
               </button>
 
-              <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Ketik pesan..."
-              />
+              <input value={message} onChange={handleTextChange} placeholder="Ketik pesan..." />
 
-              <button type="button" aria-label="Stiker">
+              <button type="button" aria-label="Stiker" disabled title="Belum tersedia">
                 <Icon>note_add</Icon>
               </button>
             </div>
 
-            <button
-              type="submit"
-              className="send-button"
-              aria-label={message.trim() ? "Kirim Pesan" : "Rekam Suara"}
-            >
-              <Icon>{message.trim() ? "send" : "mic"}</Icon>
+            <button type="submit" className="send-button" aria-label={message.trim() ? 'Kirim Pesan' : 'Rekam Suara'}>
+              <Icon>{message.trim() ? 'send' : 'mic'}</Icon>
             </button>
           </form>
         </main>

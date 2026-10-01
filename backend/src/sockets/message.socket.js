@@ -1,8 +1,18 @@
 const messageService = require('../services/messageService');
+const { assertMember } = require('../services/conversationService');
 
 function registerMessageHandlers(io, socket) {
-  socket.on('join_conversation', (conversationId) => {
-    socket.join(conversationId);
+  socket.on('join_conversation', async (conversationId) => {
+    try {
+      await assertMember(conversationId, socket.userId);
+      socket.join(conversationId);
+    } catch (err) {
+      socket.emit('message_error', { error: err.message });
+    }
+  });
+
+  socket.on('leave_conversation', (conversationId) => {
+    socket.leave(conversationId);
   });
 
   socket.on('send_message', async ({ conversationId, content, type }) => {
@@ -20,13 +30,22 @@ function registerMessageHandlers(io, socket) {
   });
 
   // --- Typing indicator ---
-  socket.on('typing_start', ({ conversationId }) => {
-    // broadcast KE SEMUA di room KECUALI pengirim sendiri
-    socket.to(conversationId).emit('user_typing', { userId: socket.userId, conversationId });
+  socket.on('typing_start', async ({ conversationId }) => {
+    try {
+      await assertMember(conversationId, socket.userId);
+      socket.to(conversationId).emit('user_typing', { userId: socket.userId, conversationId });
+    } catch (err) {
+      socket.emit('message_error', { error: err.message });
+    }
   });
 
-  socket.on('typing_stop', ({ conversationId }) => {
-    socket.to(conversationId).emit('user_stop_typing', { userId: socket.userId, conversationId });
+  socket.on('typing_stop', async ({ conversationId }) => {
+    try {
+      await assertMember(conversationId, socket.userId);
+      socket.to(conversationId).emit('user_stop_typing', { userId: socket.userId, conversationId });
+    } catch (err) {
+      socket.emit('message_error', { error: err.message });
+    }
   });
 
   // --- Read receipt ---

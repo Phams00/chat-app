@@ -2,6 +2,16 @@ import { io } from 'socket.io-client';
 import usePresenceStore from '../store/presenceStore';
 
 let socket = null;
+const socketListeners = new Set();
+
+function subscribeSocket(listener) {
+  socketListeners.add(listener);
+  return () => socketListeners.delete(listener);
+}
+
+function notifySocketListeners() {
+  socketListeners.forEach((listener) => listener());
+}
 
 export function connectSocket(token) {
   if (!token) return null;
@@ -17,6 +27,7 @@ export function connectSocket(token) {
 
   const socketHost = window.location.hostname || 'localhost';
   socket = io(`http://${socketHost}:3000`, { auth: { token } });
+  notifySocketListeners();
 
   socket.on('online_users_list', (ids) => {
     usePresenceStore.getState().setOnlineList(ids);
@@ -34,3 +45,5 @@ export function connectSocket(token) {
 export function getSocket() {
   return socket;
 }
+
+export { subscribeSocket };

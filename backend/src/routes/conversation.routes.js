@@ -7,6 +7,7 @@ router.use(authMiddleware);
 
 router.post('/', controller.createOrGet);
 router.get('/', controller.list);
+router.get('/:id', controller.getOne);
 router.get('/:id/messages', controller.getMessages);
 
 module.exports = router;

@@ -83,4 +83,4 @@ async function getConversation(conversationId, userId) {
   };
 }
 
-module.exports = { getOrCreateDirectConversation, listConversations, assertMember };
+module.exports = { getOrCreateDirectConversation, listConversations, getConversation, assertMember };
