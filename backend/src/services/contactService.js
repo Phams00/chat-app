@@ -1,8 +1,12 @@
 const prisma = require('../config/prisma');
 
 async function addContact(userId, contactPhoneNumber) {
+  if (typeof contactPhoneNumber !== 'string' || !contactPhoneNumber.trim()) {
+    throw new Error('Nomor telepon wajib diisi');
+  }
+
   const contactUser = await prisma.user.findUnique({
-    where: { phoneNumber: contactPhoneNumber },
+    where: { phoneNumber: contactPhoneNumber.trim() },
   });
 
   if (!contactUser) {

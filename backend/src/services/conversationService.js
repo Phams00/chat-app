@@ -2,6 +2,20 @@ const prisma = require('../config/prisma');
 
 // Cari conversation direct yang sudah ada antara 2 user, atau buat baru
 async function getOrCreateDirectConversation(userId, otherUserId) {
+  if (typeof otherUserId !== 'string' || !otherUserId.trim()) {
+    throw new Error('Kontak tujuan wajib dipilih');
+  }
+  if (userId === otherUserId) {
+    throw new Error('Tidak bisa membuat chat dengan diri sendiri');
+  }
+
+  const savedContact = await prisma.contact.findUnique({
+    where: { userId_contactUserId: { userId, contactUserId: otherUserId } },
+  });
+  if (!savedContact) {
+    throw new Error('Pengguna ini belum ada di daftar kontak kamu');
+  }
+
   const existing = await prisma.conversation.findFirst({
     where: {
       type: 'direct',
