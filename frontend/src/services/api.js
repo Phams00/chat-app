@@ -11,4 +11,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const isLoginRequest = error.config?.url?.endsWith('/auth/login');
+    if (error.response?.status === 401 && !isLoginRequest) {
+      useAuthStore.getState().logout();
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export default api;

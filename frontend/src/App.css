@@ -4,3 +4,29 @@
   margin: 0;
   padding: 0;
 }
+
+.protected-content {
+  display: flex;
+  height: 100vh;
+  min-height: 100vh;
+  margin-left: 64px;
+  padding: 16px;
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .protected-content {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .protected-content > .chat-list {
+    width: 100%;
+  }
+
+  .protected-content > .chat-list.has-selection,
+  .protected-content > .chat-room.no-selection {
+    display: none;
+  }
+}

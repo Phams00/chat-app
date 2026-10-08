@@ -22,7 +22,11 @@ const useAuthStore = create(
             partialize: (state) => ({ token: state.token, user: state.user }),
             onRehydrateStorage: () => (state) => {
                 if (state) {
-                    state.isAuthenticated = Boolean(state.token && state.user);
+                    if (state.token && state.user) {
+                        state.setAuth(state.token, state.user);
+                    } else {
+                        state.logout();
+                    }
                 }
             },
         },

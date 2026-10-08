@@ -1,9 +1,16 @@
 import { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
+
 import api from '../../services/api';
+
 import useAuthStore from '../../store/authStore';
+
 import { connectSocket } from '../../services/socket';
+
 import './AuthPage.css';
+
+
 
 function Icon({ children, className = '' }) {
   return <span className={`material-symbols-outlined ${className}`}>{children}</span>;
@@ -11,7 +18,6 @@ function Icon({ children, className = '' }) {
 
 function AuthPage() {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
-  const [authMethod, setAuthMethod] = useState('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -23,9 +29,9 @@ function AuthPage() {
   const navigate = useNavigate();
 
   const isLogin = mode === 'login';
-  const canSubmit = isLogin
-    ? phoneNumber.trim() && password.trim()
-    : phoneNumber.trim() && name.trim() && password.trim();
+  const canSubmit =
+    Boolean(phoneNumber.trim() && password) &&
+    (isLogin || Boolean(name.trim() && password.length >= 6));
 
   function switchMode(nextMode) {
     setMode(nextMode);
@@ -40,20 +46,34 @@ function AuthPage() {
     setLoading(true);
 
     try {
+      const credentials = {
+        phoneNumber: phoneNumber.trim(),
+        password,
+      };
+      let response;
+
       if (isLogin) {
-        const res = await api.post('/auth/login', { phoneNumber, password });
-        setAuth(res.data.token, res.data.user);
-        connectSocket(res.data.token);
-        navigate('/');
+        response = await api.post('/auth/login', credentials);
       } else {
-        await api.post('/auth/register', { phoneNumber, name, password });
-        const res = await api.post('/auth/login', { phoneNumber, password });
-        setAuth(res.data.token, res.data.user);
-        connectSocket(res.data.token);
-        navigate('/');
+        await api.post('/auth/register', { ...credentials, name: name.trim() });
+        response = await api.post('/auth/login', credentials);
       }
+
+      const { token, user } = response.data || {};
+      if (!token || !user?.id) {
+        throw new Error('Server mengirim data login yang tidak lengkap. Coba lagi.');
+      }
+
+      setAuth(token, user);
+      connectSocket(token);
+      navigate('/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Terjadi kesalahan, coba lagi');
+      setError(
+        err.response?.data?.error ||
+          (err.request
+            ? 'Tidak dapat terhubung ke server. Pastikan backend berjalan, lalu coba lagi.'
+            : err.message || 'Terjadi kesalahan, coba lagi.'),
+      );
     } finally {
       setLoading(false);
     }
@@ -64,10 +84,7 @@ function AuthPage() {
       <header className="quacks-header">
         <div className="quacks-brand-wrap">
           <div className="quacks-logo">
-            <img
-              alt="QuacksApp Mascot"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRTGh9nNvljfRRjFXnedqSDX0yY7q4iV0oDnPfanuxY21APBRqytKSuoOmpTqHzjErbR-9YA3OvXAR7tg0-ExPVNbnA3L8xq72awKtFmrCEt4n3o4oXL7eHKSYyCrb5qxRTDOnRBYMU4xtth02gA1Ii0CQJql3i23PuM8DAUzbQGZh-z_9lP-5HG2xC0TdclO40d2GDkE_pe9y3dXaScOnwV5ABhQ7kvoeTvyOAI8V6bLaHEyfuZHw1-2fv0oLNAhehpM"
-            />
+            <img alt="QuacksApp Mascot" src="/quacks-logo.png" />
           </div>
 
           <div className="quacks-brand-copy">
@@ -80,11 +97,11 @@ function AuthPage() {
         </div>
 
         <div className="quacks-header-actions">
-          <button type="button" className="header-button">
+          <button type="button" className="header-button" disabled title="Bahasa Indonesia">
             <Icon>language</Icon>
             <span>ID / Indonesia</span>
           </button>
-          <button type="button" className="header-button">
+          <button type="button" className="header-button" disabled title="Pusat bantuan belum tersedia">
             <Icon>help_outline</Icon>
             <span>Bantuan</span>
           </button>
@@ -96,10 +113,7 @@ function AuthPage() {
           <div className="quacks-form-card">
             <div className="quacks-form-header">
               <div className="quacks-form-logo">
-                <img
-                  alt="Quacks Mascot"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCylNJY1l5KoLpQeCP03rba_5Et5l1sRpfN-OOn_JvW7sfgrcsaItgq-nkCRiK4fifyzbIPtIX8lqfoO8mPYv0LN3pSSkLIzK-IrtM-gQvRmfWJafyOuDLqqrwoflrv5iW-BFIApqmmUVRCGRJSaV3i_qaO1RtzZaSg40dqC6TQZyp0uGa50ycMsC_DD_6AYu-kiT-D1DX5rkNiCAvHm5x0WD_fqpjay_JF1P6-o_QEfqdcrfGyFI0btn1Kkht2HKogpQ"
-                />
+                <img alt="Quacks Mascot" src="/quacks-logo.png" />
               </div>
 
               <div>
@@ -113,18 +127,16 @@ function AuthPage() {
             </div>
 
             <div className="quacks-auth-tabs" role="tablist">
-              <button
-                type="button"
-                className={authMethod === 'phone' ? 'active' : ''}
-                onClick={() => setAuthMethod('phone')}
-              >
+              <button type="button" className="active" role="tab" aria-selected="true">
                 <Icon>smartphone</Icon>
                 <span>Nomor Ponsel</span>
               </button>
               <button
                 type="button"
-                className={authMethod === 'email' ? 'active' : ''}
-                onClick={() => setAuthMethod('email')}
+                role="tab"
+                aria-selected="false"
+                disabled
+                title="Login dengan email atau Quacks ID belum tersedia"
               >
                 <Icon>alternate_email</Icon>
                 <span>Email / Quacks ID</span>
@@ -132,41 +144,28 @@ function AuthPage() {
             </div>
 
             <form className="quacks-auth-form" onSubmit={handleSubmit}>
-              {authMethod === 'phone' ? (
-                <div className="auth-field">
-                  <label htmlFor="phoneNumber">Nomor Telepon</label>
-                  <div className="input-shell input-shell--phone">
-                    <div className="country-prefix">
-                      <span className="country-flag">🇮🇩</span>
-                      <span>+62</span>
-                      <Icon className="dropdown-icon">arrow_drop_down</Icon>
-                    </div>
-                    <input
-                      id="phoneNumber"
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="812 3456 7890"
-                      autoComplete="tel"
-                    />
+              <div className="auth-field">
+                <label htmlFor="phoneNumber">Nomor Telepon</label>
+                <div className="input-shell input-shell--phone">
+                  <div className="country-prefix" aria-hidden="true">
+                    <span className="country-flag">🇮🇩</span>
+                    <span>+62</span>
                   </div>
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value);
+                      setError('');
+                    }}
+                    placeholder="812 3456 7890"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    required
+                  />
                 </div>
-              ) : (
-                <div className="auth-field">
-                  <label htmlFor="phoneNumber">Quacks ID atau Email</label>
-                  <div className="input-shell">
-                    <Icon>alternate_email</Icon>
-                    <input
-                      id="phoneNumber"
-                      type="text"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="contoh: @username atau email@domain.com"
-                      autoComplete="username"
-                    />
-                  </div>
-                </div>
-              )}
+              </div>
 
               {!isLogin && (
                 <div className="auth-field">
@@ -177,9 +176,13 @@ function AuthPage() {
                       id="name"
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setError('');
+                      }}
                       placeholder="Masukkan nama lengkap"
                       autoComplete="name"
+                      required
                     />
                   </div>
                 </div>
@@ -193,9 +196,14 @@ function AuthPage() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError('');
+                    }}
                     placeholder={isLogin ? 'Masukkan kata sandi akun Anda' : 'Buat kata sandi minimal 6 karakter'}
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
+                    minLength={isLogin ? undefined : 6}
+                    required
                   />
                   <button
                     type="button"
@@ -213,10 +221,21 @@ function AuthPage() {
                   <input type="checkbox" defaultChecked />
                   <span>Ingat saya di perangkat ini</span>
                 </label>
-                <a href="#">Lupa Kata Sandi?</a>
+                <button
+                  className="forgot-password"
+                  type="button"
+                  disabled
+                  title="Pemulihan kata sandi belum tersedia"
+                >
+                  Lupa Kata Sandi?
+                </button>
               </div>
 
-              {error && <div className="auth-error">{error}</div>}
+              {error && (
+                <div className="auth-error" role="alert" aria-live="polite">
+                  {error}
+                </div>
+              )}
 
               <button type="submit" className="auth-submit" disabled={!canSubmit || loading}>
                 <span>{loading ? 'Memproses...' : isLogin ? 'Masuk Sekarang' : 'Daftar Sekarang'}</span>
@@ -228,7 +247,12 @@ function AuthPage() {
               <span>ATAU</span>
             </div>
 
-            <button type="button" className="google-button">
+            <button
+              type="button"
+              className="google-button"
+              disabled
+              title="Login dengan Google belum tersedia"
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" fill="#EA4335" />
                 <path d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" fill="#4285F4" />
@@ -242,16 +266,12 @@ function AuthPage() {
               {isLogin ? (
                 <>
                   <span>Belum punya akun QuacksApp?</span>
-                  <button type="button" onClick={() => switchMode('register')}>
-                    Daftar di sini
-                  </button>
+                  <button type="button" onClick={() => switchMode('register')}>Daftar di sini</button>
                 </>
               ) : (
                 <>
                   <span>Sudah punya akun?</span>
-                  <button type="button" onClick={() => switchMode('login')}>
-                    Masuk
-                  </button>
+                  <button type="button" onClick={() => switchMode('login')}>Masuk</button>
                 </>
               )}
             </div>
@@ -266,35 +286,55 @@ function AuthPage() {
               <div className="duck duck-rain-3">🦆</div>
               <div className="duck duck-rain-4">🦆</div>
               <div className="duck duck-rain-5">🦆</div>
-              <div className="duck duck-rain-6">🦆</div>
-              <div className="duck duck-rain-7">🦆</div>
             </div>
 
             <div className="showcase-glow" />
-            <div className="showcase-card glass-card showcase-card-top">
-              <div className="showcase-item">
-                <span className="showcase-icon">verified_user</span>
-                <div>
-                  <strong>Enkripsi end-to-end</strong>
-                  <small>Pesan diamankan dari ujung ke ujung</small>
-                </div>
+
+            <div className="showcase-hero">
+              <div className="mascot-frame">
+                <img src="/quacks-mascot.png" alt="QuacksApp mascot" />
+                <span className="mascot-badge">▣</span>
               </div>
+
+              <h2>Obrolan Cepat, Bebas &amp;<br />Terenkripsi</h2>
+              <p>
+                Nikmati pengalaman berkirim pesan tanpa<br />
+                perasaan data yang aman, protokol<br />
+                terdesentralisasi QuacksApp.
+              </p>
             </div>
 
-            <div className="showcase-card glass-card showcase-card-bottom">
-              <div className="showcase-item">
-                <span className="showcase-icon">groups</span>
+            <div className="showcase-features">
+              <div className="showcase-feature">
+                <div className="feature-icon"><Icon>lock</Icon></div>
                 <div>
-                  <strong>Komunitas aktif</strong>
-                  <small>5.8K pengguna online sekarang</small>
+                  <strong>End-to-End Encrypted</strong>
+                  <small>Pesan diamankan dari ujung ke ujung.</small>
+                  <small>Privasi tetap terjaga.</small>
+                </div>
+              </div>
+
+              <div className="showcase-feature">
+                <div className="feature-icon"><Icon>hub</Icon></div>
+                <div>
+                  <strong>Node Tersentralisasi</strong>
+                  <small>Terhubung dengan server peer-to-peer.</small>
+                  <small>Terdistribusi, aman, dan privat.</small>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      <footer className="quacks-footer">
+        <span>© QUACKSAPP | Decentralized Protocol • Zero Knowledge Architecture</span>
+        <span>© 2026 QUACKSAPP MESSENGER. ENCRYPTED &amp; DISTRIBUTED ARCHITECTURE.</span>
+      </footer>
     </div>
   );
 }
+
+
 
 export default AuthPage;

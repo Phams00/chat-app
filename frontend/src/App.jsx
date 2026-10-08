@@ -4,10 +4,29 @@ import ChatList from './screen/ChatList/Chatlist';
 import ChatRoom from './screen/ChatRoom/ChatRoom';
 import Contacts from './screen/Contacts/Contacts';
 import useAuthStore from './store/authStore';
+import Sidebar from './components/Sidebar/sidebar';
 
 function ProtectedRoutes() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return isAuthenticated ? (
+    <>
+      <Sidebar />
+      <div className="protected-content">
+        <Outlet />
+      </div>
+    </>
+  ) : (
+    <Navigate to="/login" replace />
+  );
+}
+
+function ChatWorkspace() {
+  return (
+    <>
+      <ChatList />
+      <Outlet />
+    </>
+  );
 }
 
 function App() {
@@ -21,9 +40,11 @@ function App() {
           element={isAuthenticated ? <Navigate to="/" replace /> : <AuthPage />}
         />
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<ChatList />} />
+          <Route element={<ChatWorkspace />}>
+            <Route index element={<ChatRoom />} />
+            <Route path="chats/:id" element={<ChatRoom />} />
+          </Route>
           <Route path="/contacts" element={<Contacts />} />
-          <Route path="/chats/:id" element={<ChatRoom />} />
         </Route>
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>

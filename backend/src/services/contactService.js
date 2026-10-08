@@ -1,13 +1,17 @@
 const prisma = require('../config/prisma');
+const { phoneNumberCandidates } = require('../utils/phoneNumber');
 
 async function addContact(userId, contactPhoneNumber) {
   if (typeof contactPhoneNumber !== 'string' || !contactPhoneNumber.trim()) {
     throw new Error('Nomor telepon wajib diisi');
   }
 
-  const contactUser = await prisma.user.findUnique({
-    where: { phoneNumber: contactPhoneNumber.trim() },
-  });
+  const candidates = phoneNumberCandidates(contactPhoneNumber);
+  let contactUser = null;
+  for (const candidate of candidates) {
+    contactUser = await prisma.user.findUnique({ where: { phoneNumber: candidate } });
+    if (contactUser) break;
+  }
 
   if (!contactUser) {
     throw new Error('Nomor tidak terdaftar di aplikasi ini');
