@@ -9,6 +9,7 @@ function ChatList() {
   const [conversations, setConversations] = useState([]);
   const token = useAuthStore((s) => s.token);
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const logout = useAuthStore((s) => s.logout);
   const onlineUsers = usePresenceStore((s) => s.onlineUsers);
   const navigate = useNavigate();
 
@@ -23,6 +24,11 @@ function ChatList() {
     fetchConversations();
   }, [token]);
 
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
+
   return (
     <div style={{ maxWidth: 400, margin: '0 auto', padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -31,6 +37,9 @@ function ChatList() {
           <button onClick={() => navigate('/contacts')}>+ Kontak</button>
           <button onClick={() => navigate('/profile')} style={{ marginLeft: 8 }}>
             Profil
+          </button>
+          <button onClick={handleLogout} style={{ marginLeft: 8 }}>
+            Keluar
           </button>
         </div>
       </div>

@@ -42,6 +42,14 @@ export function connectSocket(token) {
   return socket;
 }
 
+export function disconnectSocket() {
+  if (!socket) return;
+
+  socket.disconnect();
+  socket = null;
+  notifySocketListeners();
+}
+
 export function getSocket() {
   return socket;
 }
