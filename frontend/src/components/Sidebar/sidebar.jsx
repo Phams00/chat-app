@@ -21,7 +21,7 @@ export default function Sidebar() {
           aria-label="Buka daftar chat"
           onClick={() => navigate('/')}
         >
-          <img src="/quacks-logo.png" alt="" />
+          <img src="/quacks-logo-hd.jpeg" alt="" />
         </button>
 
         <nav className="sidebar-nav">

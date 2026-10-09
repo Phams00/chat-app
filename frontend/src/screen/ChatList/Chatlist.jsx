@@ -48,19 +48,19 @@ function ChatList() {
     if (!socket) return undefined;
 
     function handleNewMessage(message) {
-    setConversations((current) =>
-      current
-        .map((conversation) =>
-          conversation.conversationId === message.conversationId
-            ? { ...conversation, lastMessage: message }
-            : conversation,
-        )
-        .sort((first, second) => {
-          const firstTime = new Date(first.lastMessage?.createdAt || 0).getTime();
-          const secondTime = new Date(second.lastMessage?.createdAt || 0).getTime();
-          return secondTime - firstTime;
-        }),
-    );
+      setConversations((current) =>
+        current
+          .map((conversation) =>
+            conversation.conversationId === message.conversationId
+              ? { ...conversation, lastMessage: message }
+              : conversation,
+          )
+          .sort((first, second) => {
+            const firstTime = new Date(first.lastMessage?.createdAt || 0).getTime();
+            const secondTime = new Date(second.lastMessage?.createdAt || 0).getTime();
+            return secondTime - firstTime;
+          }),
+      );
     }
 
     socket.on('new_message', handleNewMessage);
