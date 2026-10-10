@@ -69,7 +69,16 @@ async function login({ phoneNumber, password }) {
   }
 
   const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  return { token, user: { id: user.id, name: user.name, phoneNumber: user.phoneNumber } };
+  return {
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      phoneNumber: user.phoneNumber,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+    },
+  };
 }
 
 module.exports = { register, login };
