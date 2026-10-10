@@ -9,5 +9,6 @@ router.post('/', controller.createOrGet);
 router.get('/', controller.list);
 router.get('/:id', controller.getOne);
 router.get('/:id/messages', controller.getMessages);
+router.post('/:id/messages/attachments', controller.uploadAttachment);
 
 module.exports = router;

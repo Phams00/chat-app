@@ -11,6 +11,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' } // sementara izinkan semua, nanti dipersempit
 });
+app.set('io', io);
 
 io.use(socketAuthMiddleware);
 

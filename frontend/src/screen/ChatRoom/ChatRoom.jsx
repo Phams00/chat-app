@@ -26,6 +26,41 @@ function formatTime(dateString) {
   return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 }
 
+function MessageContent({ item }) {
+  const backendOrigin = api.defaults.baseURL.replace(/\/api\/?$/, '');
+  const attachmentUrl = item.attachmentUrl ? `${backendOrigin}${item.attachmentUrl}` : '';
+
+  return (
+    <>
+      {attachmentUrl && item.type === 'image' && (
+        <a
+          className="message-attachment-image"
+          href={attachmentUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <img src={attachmentUrl} alt={item.attachmentName || 'Lampiran gambar'} />
+        </a>
+      )}
+      {attachmentUrl && item.type === 'file' && (
+        <a
+          className="message-attachment-file"
+          href={attachmentUrl}
+          target="_blank"
+          rel="noreferrer"
+          download={item.attachmentName || true}
+        >
+          <Icon>description</Icon>
+          <span>{item.attachmentName || 'Unduh lampiran'}</span>
+        </a>
+      )}
+      {item.content && (
+        <p className={attachmentUrl ? 'message-caption' : ''}>{item.content}</p>
+      )}
+    </>
+  );
+}
+
 function ChatRoom() {
   const { id: conversationId } = useParams();
   const navigate = useNavigate();
@@ -35,6 +70,9 @@ function ChatRoom() {
   const [otherUser, setOtherUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
+  const [selectedAttachment, setSelectedAttachment] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [conversationLoad, setConversationLoad] = useState({
     conversationId: null,
     loading: true,
@@ -44,12 +82,15 @@ function ChatRoom() {
   const [error, setError] = useState('');
   const socket = useSyncExternalStore(subscribeSocket, getSocket, getSocket);
   const threadRef = useRef(null);
+  const messageInputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   const loadStateIsCurrent = conversationLoad.conversationId === conversationId;
   const loading = Boolean(conversationId) && (!loadStateIsCurrent || conversationLoad.loading);
   const loadError = conversationId && loadStateIsCurrent ? conversationLoad.error : '';
   const activeOtherUser = !conversationId || loading || loadError ? null : otherUser;
+  const canCompose = Boolean(conversationId && !loading && activeOtherUser);
   const isOnline = Boolean(activeOtherUser && onlineUsers.has(activeOtherUser.id));
 
   useEffect(() => {
@@ -174,18 +215,70 @@ function ChatRoom() {
     }, 1500);
   }
 
-  function sendMessage(event) {
+  async function sendMessage(event) {
     event.preventDefault();
     const content = message.trim();
-    if (!content) return;
+    if (!content && !selectedAttachment) return;
+    setError('');
+
+    if (selectedAttachment) {
+      if (socket?.connected) socket.emit('typing_stop', { conversationId });
+      const formData = new FormData();
+      formData.append('file', selectedAttachment);
+      formData.append('caption', content);
+      setIsUploading(true);
+      try {
+        const response = await api.post(
+          `/conversations/${conversationId}/messages/attachments`,
+          formData,
+        );
+        setMessages((current) =>
+          current.some((item) => item.id === response.data.id)
+            ? current
+            : [...current, response.data],
+        );
+        setSelectedAttachment(null);
+        setMessage('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (requestError) {
+        setError(
+          requestError.response?.data?.error || 'Lampiran tidak dapat dikirim. Coba lagi.',
+        );
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
+
     if (!socket?.connected) {
       setError('Koneksi chat terputus. Tunggu hingga tersambung lalu coba lagi.');
       return;
     }
 
-    socket.emit('send_message', { conversationId, content, type: 'text' });
     socket.emit('typing_stop', { conversationId });
+    socket.emit('send_message', { conversationId, content, type: 'text' });
     setMessage('');
+  }
+
+  function insertEmoji(emoji) {
+    const input = messageInputRef.current;
+    const start = input?.selectionStart ?? message.length;
+    const end = input?.selectionEnd ?? message.length;
+    const nextMessage = `${message.slice(0, start)}${emoji}${message.slice(end)}`;
+    setMessage(nextMessage);
+    setError('');
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
+  }
+
+  function handleAttachmentChange(event) {
+    const [file] = event.target.files || [];
+    if (!file) return;
+    setSelectedAttachment(file);
+    setIsEmojiPickerOpen(false);
     setError('');
   }
 
@@ -261,7 +354,9 @@ function ChatRoom() {
 
           return isMine ? (
             <div className="outgoing-message" key={item.id}>
-              <div className="outgoing-bubble">{item.content}</div>
+              <div className={`outgoing-bubble${item.type === 'image' ? ' has-image-attachment' : ''}`}>
+                <MessageContent item={item} />
+              </div>
               <div className="outgoing-meta">
                 <span>{time}</span>
                 <Icon className="checked">{item.readAt ? 'done_all' : 'done'}</Icon>
@@ -271,7 +366,7 @@ function ChatRoom() {
             <div className="incoming-message" key={item.id}>
               {avatar(item.sender?.name || otherUser?.name || '', item.sender?.avatarUrl)}
               <div className="incoming-content">
-                <div className="incoming-bubble">{item.content}</div>
+                <div className="incoming-bubble"><MessageContent item={item} /></div>
                 <span className="message-time">{time}</span>
               </div>
             </div>
@@ -281,14 +376,81 @@ function ChatRoom() {
       </div>
 
       <form className="message-input" onSubmit={sendMessage}>
-        <div className="message-input-box">
+        <div className="message-action-group">
           <input
+            ref={fileInputRef}
+            className="attachment-file-input"
+            type="file"
+            accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            onChange={handleAttachmentChange}
+            aria-label="Pilih file atau gambar"
+          />
+          <button
+            className="message-action-button"
+            type="button"
+            title="Tambahkan file atau gambar"
+            aria-label="Tambahkan file atau gambar"
+            disabled={!canCompose || isUploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Icon>add</Icon>
+          </button>
+          <div className="emoji-picker-wrapper">
+            <button
+              className="message-action-button"
+              type="button"
+              title="Pilih emoji"
+              aria-label="Pilih emoji"
+              aria-expanded={isEmojiPickerOpen}
+              disabled={!canCompose || isUploading}
+              onClick={() => setIsEmojiPickerOpen((open) => !open)}
+            >
+              <Icon>sentiment_satisfied</Icon>
+            </button>
+            {isEmojiPickerOpen && (
+              <div className="emoji-picker" role="group" aria-label="Pilih emoji">
+                {['😀', '😂', '🥰', '😍', '😊', '😉', '😭', '😎', '👍', '🙏', '❤️', '🎉'].map(
+                  (emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      aria-label={`Sisipkan ${emoji}`}
+                      onClick={() => insertEmoji(emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className={`message-input-box${selectedAttachment ? ' has-attachment' : ''}`}>
+          {selectedAttachment && (
+            <div className="attachment-preview">
+              <Icon>{selectedAttachment.type.startsWith('image/') ? 'image' : 'description'}</Icon>
+              <span title={selectedAttachment.name}>{selectedAttachment.name}</span>
+              <button
+                type="button"
+                aria-label="Hapus lampiran"
+                title="Hapus lampiran"
+                onClick={() => {
+                  setSelectedAttachment(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+              >
+                <Icon>close</Icon>
+              </button>
+            </div>
+          )}
+          <input
+            ref={messageInputRef}
             type="text"
             placeholder="Ketik pesan..."
             value={message}
             onChange={handleTextChange}
             aria-label="Tulis pesan"
-            disabled={!conversationId || loading || !activeOtherUser}
+            disabled={!canCompose || isUploading}
           />
         </div>
         <button
@@ -296,9 +458,9 @@ function ChatRoom() {
           type="submit"
           title="Kirim pesan"
           aria-label="Kirim pesan"
-          disabled={!message.trim() || !conversationId || loading || !activeOtherUser}
+          disabled={(!message.trim() && !selectedAttachment) || !canCompose || isUploading}
         >
-          <Icon>send</Icon>
+          <Icon>{isUploading ? 'hourglass_top' : 'send'}</Icon>
         </button>
       </form>
     </section>

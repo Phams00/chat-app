@@ -63,6 +63,8 @@ model Message {
   senderId       String    @map("sender_id")
   content        String?
   type           String    @default("text") // text | image | file | sticker
+  attachmentUrl  String?   @map("attachment_url")
+  attachmentName String?   @map("attachment_name")
   isStarred      Boolean   @default(false) @map("is_starred")
   readAt         DateTime? @map("read_at")
   createdAt      DateTime  @default(now()) @map("created_at")

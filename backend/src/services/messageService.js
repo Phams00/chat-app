@@ -20,6 +20,23 @@ async function saveMessage(conversationId, senderId, content, type = 'text') {
   });
 }
 
+async function saveAttachmentMessage(conversationId, senderId, file, caption) {
+  await assertMember(conversationId, senderId);
+
+  const isImage = file.mimetype.startsWith('image/');
+  return prisma.message.create({
+    data: {
+      conversationId,
+      senderId,
+      content: caption || null,
+      type: isImage ? 'image' : 'file',
+      attachmentUrl: `/uploads/messages/${file.filename}`,
+      attachmentName: file.originalname,
+    },
+    include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
+  });
+}
+
 async function markAsRead(messageId, userId) {
   const message = await prisma.message.findUnique({ where: { id: messageId } });
   if (!message) throw new Error('Pesan tidak ditemukan');
@@ -35,4 +52,4 @@ async function markAsRead(messageId, userId) {
   });
 }
 
-module.exports = { getMessages, saveMessage, markAsRead };
+module.exports = { getMessages, saveMessage, saveAttachmentMessage, markAsRead };

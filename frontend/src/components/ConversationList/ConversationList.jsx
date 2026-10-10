@@ -110,7 +110,12 @@ function ConversationList({
 
               <span className="chat-bottomline">
                 <span className="chat-preview">
-                  {conversation.lastMessage?.content || 'Belum ada pesan'}
+                  {conversation.lastMessage?.content ||
+                    (conversation.lastMessage?.type === 'image'
+                      ? '📷 Foto'
+                      : conversation.lastMessage?.type === 'file'
+                        ? '📎 File'
+                        : 'Belum ada pesan')}
                 </span>
               </span>
             </span>
