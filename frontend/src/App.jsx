@@ -3,6 +3,7 @@ import AuthPage from './screen/Login/AuthPage';
 import ChatList from './screen/ChatList/Chatlist';
 import ChatRoom from './screen/ChatRoom/ChatRoom';
 import Contacts from './screen/Contacts/Contacts';
+import Settings from './screen/Settings/Settings';
 import useAuthStore from './store/authStore';
 import Sidebar from './components/Sidebar/sidebar';
 
@@ -45,6 +46,7 @@ function App() {
             <Route path="chats/:id" element={<ChatRoom />} />
           </Route>
           <Route path="/contacts" element={<Contacts />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>

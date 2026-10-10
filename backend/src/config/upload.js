@@ -56,3 +56,4 @@ const messageUpload = multer({
 }).single('file');
 
 module.exports = { UPLOAD_ROOT, AVATAR_DIR, avatarUpload, messageUpload };
+
