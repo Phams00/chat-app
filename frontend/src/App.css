@@ -13,6 +13,7 @@
   padding: 16px;
   gap: 12px;
   min-width: 0;
+  background: #f8f7f5;
 }
 
 @media (max-width: 720px) {
