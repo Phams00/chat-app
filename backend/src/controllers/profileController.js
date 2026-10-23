@@ -14,6 +14,22 @@ async function getMe(req, res) {
   }
 }
 
+async function getPreferences(req, res) {
+  try {
+    res.json(await profileService.getPreferences(req.user.id));
+  } catch (err) {
+    sendError(res, err);
+  }
+}
+
+async function updatePreferences(req, res) {
+  try {
+    res.json(await profileService.updatePreferences(req.user.id, req.body));
+  } catch (err) {
+    sendError(res, err);
+  }
+}
+
 async function getProfile(req, res) {
   try {
     res.json(await profileService.getProfile(req.user.id, req.params.id));
@@ -55,4 +71,12 @@ async function deleteAvatar(req, res) {
   }
 }
 
-module.exports = { getMe, getProfile, updateMe, uploadAvatar, deleteAvatar };
+module.exports = {
+  getMe,
+  getProfile,
+  updateMe,
+  uploadAvatar,
+  deleteAvatar,
+  getPreferences,
+  updatePreferences,
+};

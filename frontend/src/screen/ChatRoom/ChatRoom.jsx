@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import usePresenceStore from '../../store/presenceStore';
+import usePreferencesStore from '../../store/preferencesStore';
 import { connectSocket, getSocket, subscribeSocket } from '../../services/socket';
+import { getMediaUrl } from '../../utils/media';
 import './ChatRoom.css';
 
 function Icon({ children, className = '' }) {
@@ -66,6 +68,7 @@ function ChatRoom() {
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const currentUserId = useAuthStore((state) => state.user?.id);
+  const enterToSend = usePreferencesStore((state) => state.preferences.enterToSend);
   const onlineUsers = usePresenceStore((state) => state.onlineUsers);
   const [otherUser, setOtherUser] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -161,6 +164,26 @@ function ChatRoom() {
           conversationId,
           messageId: newMessage.id,
         });
+
+        const preferences = usePreferencesStore.getState().preferences;
+        if (
+          document.hidden &&
+          preferences.notificationsEnabled &&
+          !preferences.doNotDisturb &&
+          typeof Notification !== 'undefined' &&
+          Notification.permission === 'granted'
+        ) {
+          try {
+            new Notification(newMessage.sender?.name || 'Pesan baru', {
+              body: preferences.messagePreview
+                ? newMessage.content || 'Mengirim lampiran'
+                : 'Kamu menerima pesan baru.',
+              silent: !preferences.notificationSound,
+            });
+          } catch {
+            // Browser notification support varies by platform.
+          }
+        }
       }
     }
     function handleUserTyping(payload) {
@@ -285,7 +308,7 @@ function ChatRoom() {
   function avatar(name, avatarUrl, className = '') {
     return (
       <span className={className || 'message-avatar'}>
-        {avatarUrl ? <img src={avatarUrl} alt="" /> : initials(name)}
+        {avatarUrl ? <img src={getMediaUrl(avatarUrl)} alt="" /> : initials(name)}
       </span>
     );
   }
@@ -443,12 +466,17 @@ function ChatRoom() {
               </button>
             </div>
           )}
-          <input
+          <textarea
             ref={messageInputRef}
-            type="text"
             placeholder="Ketik pesan..."
             value={message}
             onChange={handleTextChange}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey && enterToSend) {
+                event.preventDefault();
+                sendMessage(event);
+              }
+            }}
             aria-label="Tulis pesan"
             disabled={!canCompose || isUploading}
           />

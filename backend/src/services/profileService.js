@@ -15,6 +15,19 @@ const PROFILE_SELECT = {
 };
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
+const PREFERENCE_DEFAULTS = Object.freeze({
+  theme: 'light',
+  fontSize: 15,
+  wallpaper: 'doodles',
+  doodleOpacity: 28,
+  enterToSend: true,
+  notificationsEnabled: true,
+  notificationSound: true,
+  messagePreview: true,
+  doNotDisturb: false,
+  showOnlineStatus: true,
+  showReadReceipts: true,
+});
 
 function fail(message, status = 400) {
   const err = new Error(message);
@@ -40,6 +53,61 @@ async function getMyProfile(userId) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: PROFILE_SELECT });
   if (!user) throw fail('User tidak ditemukan', 404);
   return user;
+}
+
+async function getPreferences(userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { preferences: true },
+  });
+  if (!user) throw fail('User tidak ditemukan', 404);
+  return { ...PREFERENCE_DEFAULTS, ...(user.preferences || {}) };
+}
+
+async function updatePreferences(userId, input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw fail('Preferensi tidak valid');
+  }
+
+  const entries = Object.entries(input);
+  if (entries.length === 0) throw fail('Tidak ada preferensi yang diubah');
+
+  const updated = {};
+  for (const [key, value] of entries) {
+    if (!Object.hasOwn(PREFERENCE_DEFAULTS, key)) throw fail('Preferensi tidak dikenal');
+
+    if (key === 'theme' && ['light', 'dark', 'system'].includes(value)) {
+      updated[key] = value;
+    } else if (key === 'fontSize' && [13, 15, 17, 19].includes(value)) {
+      updated[key] = value;
+    } else if (key === 'wallpaper' && ['doodles', 'plain'].includes(value)) {
+      updated[key] = value;
+    } else if (key === 'doodleOpacity' && Number.isInteger(value) && value >= 0 && value <= 100) {
+      updated[key] = value;
+    } else if (
+      typeof value === 'boolean' &&
+      ['enterToSend', 'notificationsEnabled', 'notificationSound', 'messagePreview',
+        'doNotDisturb', 'showOnlineStatus', 'showReadReceipts'].includes(key)
+    ) {
+      updated[key] = value;
+    } else {
+      throw fail(`Nilai preferensi ${key} tidak valid`);
+    }
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { preferences: true },
+  });
+  if (!current) throw fail('User tidak ditemukan', 404);
+
+  const preferences = { ...PREFERENCE_DEFAULTS, ...(current.preferences || {}), ...updated };
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { preferences },
+    select: { preferences: true },
+  });
+  return { ...PREFERENCE_DEFAULTS, ...(user.preferences || {}) };
 }
 
 async function getProfile(requesterId, targetId) {
@@ -145,4 +213,12 @@ async function deleteAvatar(userId) {
   return user;
 }
 
-module.exports = { getMyProfile, getProfile, updateProfile, setAvatar, deleteAvatar };
+module.exports = {
+  getMyProfile,
+  getProfile,
+  updateProfile,
+  setAvatar,
+  deleteAvatar,
+  getPreferences,
+  updatePreferences,
+};

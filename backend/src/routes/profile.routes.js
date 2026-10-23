@@ -10,6 +10,8 @@ router.get('/me', controller.getMe);
 router.patch('/me', controller.updateMe);
 router.post('/me/avatar', controller.uploadAvatar);
 router.delete('/me/avatar', controller.deleteAvatar);
+router.get('/me/preferences', controller.getPreferences);
+router.patch('/me/preferences', controller.updatePreferences);
 router.get('/:id', controller.getProfile);
 
 module.exports = router;

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import AuthPage from './screen/Login/AuthPage';
 import ChatList from './screen/ChatList/Chatlist';
@@ -6,9 +7,22 @@ import Contacts from './screen/Contacts/Contacts';
 import Settings from './screen/Settings/Settings';
 import useAuthStore from './store/authStore';
 import Sidebar from './components/Sidebar/sidebar';
+import usePreferencesStore from './store/preferencesStore';
 
 function ProtectedRoutes() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
+  const loadPreferences = usePreferencesStore((state) => state.loadPreferences);
+  const resetLocalPreferences = usePreferencesStore((state) => state.resetLocalPreferences);
+
+  useEffect(() => {
+    if (token) {
+      loadPreferences().catch(() => {});
+    } else {
+      resetLocalPreferences();
+    }
+  }, [loadPreferences, resetLocalPreferences, token]);
+
   return isAuthenticated ? (
     <>
       <Sidebar />

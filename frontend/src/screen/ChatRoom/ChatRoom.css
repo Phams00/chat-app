@@ -694,8 +694,13 @@
   color: #111827;
 }
 
-.message-input-box input {
+.message-input-box input,
+.message-input-box textarea {
   width: 100%;
+  min-height: 22px;
+  max-height: 120px;
+  padding: 0;
+  resize: vertical;
 
   border: 0;
   outline: none;
@@ -704,10 +709,11 @@
   color: #111827;
 
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--chat-font-size, 14px);
 }
 
-.message-input-box input::placeholder {
+.message-input-box input::placeholder,
+.message-input-box textarea::placeholder {
   color: #6b7280;
 }
 

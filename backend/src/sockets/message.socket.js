@@ -1,5 +1,6 @@
 const messageService = require('../services/messageService');
 const { assertMember } = require('../services/conversationService');
+const prisma = require('../config/prisma');
 
 function registerMessageHandlers(io, socket) {
   socket.on('join_conversation', async (conversationId) => {
@@ -51,7 +52,14 @@ function registerMessageHandlers(io, socket) {
   // --- Read receipt ---
   socket.on('mark_as_read', async ({ conversationId, messageId }) => {
     try {
-      const updated = await messageService.markAsRead(messageId, socket.userId);
+      const user = await prisma.user.findUnique({
+        where: { id: socket.userId },
+        select: { preferences: true },
+      });
+      const showReadReceipt = user?.preferences?.showReadReceipts !== false;
+      const updated = await messageService.markAsRead(messageId, socket.userId, showReadReceipt);
+      if (!showReadReceipt) return;
+
       io.to(conversationId).emit('message_read', {
         messageId: updated.id,
         readAt: updated.readAt,

@@ -16,6 +16,7 @@ model User {
   about        String?  @map("bio")
   link         String?
   languagePref String   @default("id") @map("language_pref")
+  preferences  Json     @default("{}")
   createdAt    DateTime @default(now()) @map("created_at")
 
   memberships    ConversationMember[]
@@ -67,6 +68,7 @@ model Message {
   attachmentName String?   @map("attachment_name")
   isStarred      Boolean   @default(false) @map("is_starred")
   readAt         DateTime? @map("read_at")
+  readReceiptVisible Boolean @default(true) @map("read_receipt_visible")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

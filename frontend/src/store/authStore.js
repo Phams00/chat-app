@@ -3,6 +3,23 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { disconnectSocket } from '../services/socket';
 import usePresenceStore from './presenceStore';
 
+const authStorage = {
+    getItem: (name) => {
+        const session = sessionStorage.getItem(name);
+        const legacySession = localStorage.getItem(name);
+
+        if (legacySession !== null) localStorage.removeItem(name);
+        if (session !== null) return session;
+
+        if (legacySession !== null) {
+            sessionStorage.setItem(name, legacySession);
+        }
+        return legacySession;
+    },
+    setItem: (name, value) => sessionStorage.setItem(name, value),
+    removeItem: (name) => sessionStorage.removeItem(name),
+};
+
 const useAuthStore = create(
     persist(
         (set) => ({
@@ -18,7 +35,7 @@ const useAuthStore = create(
         }),
         {
             name: 'chatapp-auth',
-            storage: createJSONStorage(() => localStorage),
+            storage: createJSONStorage(() => authStorage),
             partialize: (state) => ({ token: state.token, user: state.user }),
             onRehydrateStorage: () => (state) => {
                 if (state) {

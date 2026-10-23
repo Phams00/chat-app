@@ -4,6 +4,7 @@ import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import usePresenceStore from '../../store/presenceStore';
 import { connectSocket } from '../../services/socket';
+import { getMediaUrl } from '../../utils/media';
 import './Contacts.css';
 
 function initials(name = '') {
@@ -278,7 +279,7 @@ function Contacts() {
                     >
                       <span className="contact-avatar">
                         {contactUser.avatarUrl ? (
-                          <img src={contactUser.avatarUrl} alt="" />
+                          <img src={getMediaUrl(contactUser.avatarUrl)} alt="" />
                         ) : (
                           <span>{initials(contactUser.name)}</span>
                         )}
@@ -308,7 +309,7 @@ function Contacts() {
             <div className="contact-profile-avatar">
               {selectedContact.contactUser.avatarUrl ? (
                 <img
-                  src={selectedContact.contactUser.avatarUrl}
+                  src={getMediaUrl(selectedContact.contactUser.avatarUrl)}
                   alt={selectedContact.contactUser.name}
                 />
               ) : (

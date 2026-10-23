@@ -1,30 +1,40 @@
 const prisma = require('../config/prisma');
 const { assertMember } = require('./conversationService');
 
+function toClientMessage(message, requesterId) {
+  const { readReceiptVisible, ...clientMessage } = message;
+  if (message.senderId === requesterId && !readReceiptVisible) {
+    clientMessage.readAt = null;
+  }
+  return clientMessage;
+}
+
 async function getMessages(conversationId, userId) {
   await assertMember(conversationId, userId);
 
-  return prisma.message.findMany({
+  const messages = await prisma.message.findMany({
     where: { conversationId },
     orderBy: { createdAt: 'asc' },
     include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
   });
+  return messages.map((message) => toClientMessage(message, userId));
 }
 
 async function saveMessage(conversationId, senderId, content, type = 'text') {
   await assertMember(conversationId, senderId);
 
-  return prisma.message.create({
+  const message = await prisma.message.create({
     data: { conversationId, senderId, content, type },
     include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
   });
+  return toClientMessage(message, senderId);
 }
 
 async function saveAttachmentMessage(conversationId, senderId, file, caption) {
   await assertMember(conversationId, senderId);
 
   const isImage = file.mimetype.startsWith('image/');
-  return prisma.message.create({
+  const message = await prisma.message.create({
     data: {
       conversationId,
       senderId,
@@ -35,9 +45,10 @@ async function saveAttachmentMessage(conversationId, senderId, file, caption) {
     },
     include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
   });
+  return toClientMessage(message, senderId);
 }
 
-async function markAsRead(messageId, userId) {
+async function markAsRead(messageId, userId, showReadReceipt = true) {
   const message = await prisma.message.findUnique({ where: { id: messageId } });
   if (!message) throw new Error('Pesan tidak ditemukan');
 
@@ -48,7 +59,7 @@ async function markAsRead(messageId, userId) {
 
   return prisma.message.update({
     where: { id: messageId },
-    data: { readAt: new Date() },
+    data: { readAt: new Date(), readReceiptVisible: showReadReceipt },
   });
 }
 

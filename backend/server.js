@@ -5,7 +5,15 @@ const { Server } = require('socket.io');
 const app = require('./src/app');
 const socketAuthMiddleware = require('./src/sockets/auth.socket');
 const registerMessageHandlers = require('./src/sockets/message.socket');
-const { addOnlineUser, removeOnlineUser, isUserOnline, getOnlineUserIds } = require('./src/sockets/presence.socket');
+const prisma = require('./src/config/prisma');
+const {
+  addOnlineUser,
+  removeOnlineUser,
+  setPresenceVisibility,
+  isPresenceVisible,
+  isUserOnline,
+  getOnlineUserIds,
+} = require('./src/sockets/presence.socket');
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -24,26 +32,55 @@ io.on('connection', (socket) => {
     socket.emit('pong_test', { message: 'Halo dari backend!' });
   });
 
-  // Cek SEBELUM menambahkan: apakah ini koneksi pertama user ini?
-  const wasOffline = !isUserOnline(socket.userId);
-  addOnlineUser(socket.userId, socket.id);
+  registerMessageHandlers(io, socket);
 
-  // Snapshot: kirim daftar online saat ini hanya ke socket yang baru connect
-  socket.emit('online_users_list', getOnlineUserIds());
+  async function registerPresence() {
+    let showOnlineStatus = true;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: socket.userId },
+        select: { preferences: true },
+      });
+      showOnlineStatus = user?.preferences?.showOnlineStatus !== false;
+    } catch {
+      showOnlineStatus = false;
+    }
+    if (!socket.connected) return;
 
-  // Delta: kabari yang lain HANYA kalau user ini benar-benar baru online
-  if (wasOffline) {
-    socket.broadcast.emit('user_online', { userId: socket.userId });
+    // Check after the query to avoid races between simultaneous device connections.
+    const wasOffline = !isUserOnline(socket.userId);
+    addOnlineUser(socket.userId, socket.id, showOnlineStatus);
+    socket.emit('online_users_list', getOnlineUserIds());
+    if (wasOffline && showOnlineStatus) {
+      socket.broadcast.emit('user_online', { userId: socket.userId });
+    }
   }
 
-  registerMessageHandlers(io, socket);
+  registerPresence();
+
+  socket.on('refresh_presence_visibility', async () => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: socket.userId },
+        select: { preferences: true },
+      });
+      const visible = user?.preferences?.showOnlineStatus !== false;
+      const wasVisible = setPresenceVisibility(socket.userId, visible);
+      if (wasVisible !== visible && isUserOnline(socket.userId)) {
+        io.emit(visible ? 'user_online' : 'user_offline', { userId: socket.userId });
+      }
+    } catch {
+      socket.emit('message_error', { error: 'Status privasi belum dapat diperbarui.' });
+    }
+  });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    const wasVisible = isPresenceVisible(socket.userId);
     removeOnlineUser(socket.userId, socket.id);
 
     // Kabari offline HANYA kalau semua tab/device user ini sudah tertutup
-    if (!isUserOnline(socket.userId)) {
+    if (!isUserOnline(socket.userId) && wasVisible) {
       io.emit('user_offline', { userId: socket.userId });
     }
   });

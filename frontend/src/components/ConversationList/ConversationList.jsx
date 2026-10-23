@@ -1,4 +1,5 @@
 import './ConversationList.css';
+import { getMediaUrl } from '../../utils/media';
 
 const avatarColors = [
   ['#f3b69f', '#cd7f5d'],
@@ -94,7 +95,7 @@ function ConversationList({
               }}
             >
               {otherMember?.avatarUrl ? (
-                <img src={otherMember.avatarUrl} alt="" />
+                <img src={getMediaUrl(otherMember.avatarUrl)} alt="" />
               ) : (
                 initials(displayName)
               )}
