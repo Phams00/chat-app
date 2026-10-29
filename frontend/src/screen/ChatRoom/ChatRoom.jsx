@@ -21,7 +21,27 @@ function formatTime(dateString) {
 }
 
 function MessageContent({ item, onPreviewImage }) {
+  const [downloadError, setDownloadError] = useState('');
   const attachmentUrl = getMediaUrl(item.attachmentUrl);
+
+  async function downloadFile() {
+    setDownloadError('');
+    try {
+      const response = await api.get(attachmentUrl, { responseType: 'blob' });
+      const downloadUrl = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = item.attachmentName || 'lampiran';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+    } catch (requestError) {
+      setDownloadError(
+        requestError.response?.data?.error || 'File tidak dapat diunduh. Coba lagi.',
+      );
+    }
+  }
 
   return (
     <>
@@ -41,18 +61,31 @@ function MessageContent({ item, onPreviewImage }) {
           <img src={attachmentUrl} alt={item.attachmentName || 'Lampiran gambar'} />
         </button>
       )}
+      {attachmentUrl && item.type === 'video' && (
+        <video
+          className="message-attachment-video"
+          src={attachmentUrl}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={item.attachmentName || 'Video dalam pesan'}
+        >
+          Browser kamu tidak mendukung pemutaran video.
+        </video>
+      )}
       {attachmentUrl && item.type === 'file' && (
-        <a
+        <button
           className="message-attachment-file"
-          href={attachmentUrl}
-          target="_blank"
-          rel="noreferrer"
-          download={item.attachmentName || true}
+          type="button"
+          onClick={downloadFile}
+          aria-label={`Unduh ${item.attachmentName || 'lampiran'}`}
         >
           <Icon>description</Icon>
           <span>{item.attachmentName || 'Unduh lampiran'}</span>
-        </a>
+          <Icon>download</Icon>
+        </button>
       )}
+      {downloadError && <p className="message-attachment-error" role="alert">{downloadError}</p>}
       {item.content && (
         <p className={attachmentUrl ? 'message-caption' : ''}>{item.content}</p>
       )}
@@ -375,7 +408,7 @@ function ChatRoom() {
 
           return isMine ? (
             <div className="outgoing-message" key={item.id}>
-              <div className={`outgoing-bubble${item.type === 'image' ? ' has-image-attachment' : ''}`}>
+              <div className={`outgoing-bubble${['image', 'video'].includes(item.type) ? ' has-media-attachment' : ''}`}>
                 <MessageContent item={item} onPreviewImage={setPreviewImage} />
               </div>
               <div className="outgoing-meta">
@@ -404,7 +437,7 @@ function ChatRoom() {
             ref={fileInputRef}
             className="attachment-file-input"
             type="file"
-            accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/x-m4v,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
             onChange={handleAttachmentChange}
             aria-label="Pilih file atau gambar"
           />
@@ -451,7 +484,13 @@ function ChatRoom() {
         <div className={`message-input-box${selectedAttachment ? ' has-attachment' : ''}`}>
           {selectedAttachment && (
             <div className="attachment-preview">
-              <Icon>{selectedAttachment.type.startsWith('image/') ? 'image' : 'description'}</Icon>
+              <Icon>
+                {selectedAttachment.type.startsWith('image/')
+                  ? 'image'
+                  : selectedAttachment.type.startsWith('video/')
+                    ? 'movie'
+                    : 'description'}
+              </Icon>
               <span title={selectedAttachment.name}>{selectedAttachment.name}</span>
               <button
                 type="button"

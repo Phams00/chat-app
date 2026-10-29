@@ -103,6 +103,8 @@ function ConversationList({
                   {conversation.lastMessage?.content ||
                     (conversation.lastMessage?.type === 'image'
                       ? '📷 Foto'
+                      : conversation.lastMessage?.type === 'video'
+                        ? '🎬 Video'
                       : conversation.lastMessage?.type === 'file'
                         ? '📎 File'
                         : 'Belum ada pesan')}

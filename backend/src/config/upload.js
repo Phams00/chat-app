@@ -21,6 +21,11 @@ const EXT_BY_MIME = {
 const MESSAGE_EXT_BY_MIME = {
   ...EXT_BY_MIME,
   'image/gif': '.gif',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/ogg': '.ogv',
+  'video/quicktime': '.mov',
+  'video/x-m4v': '.m4v',
   'application/pdf': '.pdf',
   'text/plain': '.txt',
   'application/msword': '.doc',
@@ -53,7 +58,7 @@ const messageUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (MESSAGE_EXT_BY_MIME[file.mimetype]) return cb(null, true);
-    cb(new Error('Format file tidak didukung. Gunakan gambar, PDF, atau dokumen Office.'));
+    cb(new Error('Format file tidak didukung. Gunakan gambar, video, PDF, atau dokumen Office.'));
   },
 }).single('file');
 

@@ -33,13 +33,17 @@ async function saveMessage(conversationId, senderId, content, type = 'text') {
 async function saveAttachmentMessage(conversationId, senderId, file, caption) {
   await assertMember(conversationId, senderId);
 
-  const isImage = file.mimetype.startsWith('image/');
+  const type = file.mimetype.startsWith('image/')
+    ? 'image'
+    : file.mimetype.startsWith('video/')
+      ? 'video'
+      : 'file';
   const message = await prisma.message.create({
     data: {
       conversationId,
       senderId,
       content: caption || null,
-      type: isImage ? 'image' : 'file',
+      type,
       attachmentUrl: `/uploads/messages/${file.filename}`,
       attachmentName: file.originalname,
     },
