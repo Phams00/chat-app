@@ -1,5 +1,6 @@
 import './ConversationList.css';
 import { getMediaUrl } from '../../utils/media';
+import { getInitials } from '../../utils/initials';
 
 const avatarColors = [
   ['#f3b69f', '#cd7f5d'],
@@ -8,18 +9,6 @@ const avatarColors = [
   ['#8cc7c0', '#5fa7a4'],
   ['#d1b9ff', '#9e82d9'],
 ];
-
-function initials(name = '') {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || '?'
-  );
-}
 
 function formatConversationTime(dateString) {
   if (!dateString) return '';
@@ -97,7 +86,7 @@ function ConversationList({
               {otherMember?.avatarUrl ? (
                 <img src={getMediaUrl(otherMember.avatarUrl)} alt="" />
               ) : (
-                initials(displayName)
+                getInitials(displayName)
               )}
             </span>
 

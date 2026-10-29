@@ -2,17 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import { getMediaUrl } from '../../utils/media';
+import { getInitials } from '../../utils/initials';
 import './Status.css';
-
-function initials(name = '') {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase() || '?';
-}
 
 function formatStatusTime(dateString) {
   const date = new Date(dateString);
@@ -164,7 +155,7 @@ function Status() {
               <span className={`status-avatar${statusGroups.mine.length ? ' has-status' : ''}`}>
                 {currentUser?.avatarUrl ? (
                   <img src={getMediaUrl(currentUser.avatarUrl)} alt="" />
-                ) : initials(currentUser?.name)}
+                ) : getInitials(currentUser?.name)}
                 <span className="status-add-badge" aria-hidden="true">
                   <span className="material-symbols-outlined">add</span>
                 </span>
@@ -198,7 +189,7 @@ function Status() {
                   <span className="status-avatar has-status">
                     {user.avatarUrl ? (
                       <img src={getMediaUrl(user.avatarUrl)} alt="" />
-                    ) : initials(user.name)}
+                    ) : getInitials(user.name)}
                   </span>
                   <span className="status-row-copy">
                     <strong>{user.name}</strong>
@@ -261,7 +252,7 @@ function Status() {
               <span className="status-viewer-avatar">
                 {selectedStatus.owner?.avatarUrl ? (
                   <img src={getMediaUrl(selectedStatus.owner.avatarUrl)} alt="" />
-                ) : initials(selectedStatus.owner?.name)}
+                ) : getInitials(selectedStatus.owner?.name)}
               </span>
               <span>
                 <strong>{selectedStatus.owner?.name || 'Status'}</strong>

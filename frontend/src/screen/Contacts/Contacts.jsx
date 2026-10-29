@@ -5,17 +5,8 @@ import useAuthStore from '../../store/authStore';
 import usePresenceStore from '../../store/presenceStore';
 import { connectSocket } from '../../services/socket';
 import { getMediaUrl } from '../../utils/media';
+import { getInitials } from '../../utils/initials';
 import './Contacts.css';
-
-function initials(name = '') {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase() || '?';
-}
 
 function Contacts() {
   const [contacts, setContacts] = useState([]);
@@ -281,7 +272,7 @@ function Contacts() {
                         {contactUser.avatarUrl ? (
                           <img src={getMediaUrl(contactUser.avatarUrl)} alt="" />
                         ) : (
-                          <span>{initials(contactUser.name)}</span>
+                          <span>{getInitials(contactUser.name)}</span>
                         )}
                         <i className={isOnline ? 'is-online' : ''} />
                       </span>
@@ -313,7 +304,7 @@ function Contacts() {
                   alt={selectedContact.contactUser.name}
                 />
               ) : (
-                <span>{initials(selectedContact.contactUser.name)}</span>
+                <span>{getInitials(selectedContact.contactUser.name)}</span>
               )}
             </div>
             <h2>{selectedContact.contactUser.name}</h2>
