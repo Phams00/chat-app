@@ -5,6 +5,7 @@ import ChatList from './screen/ChatList/Chatlist';
 import ChatRoom from './screen/ChatRoom/ChatRoom';
 import Contacts from './screen/Contacts/Contacts';
 import Settings from './screen/Settings/Settings';
+import Status from './screen/Status/Status';
 import useAuthStore from './store/authStore';
 import Sidebar from './components/Sidebar/sidebar';
 import usePreferencesStore from './store/preferencesStore';
@@ -61,6 +62,7 @@ function App() {
           </Route>
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/status" element={<Status />} />
         </Route>
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>

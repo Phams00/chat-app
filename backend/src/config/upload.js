@@ -6,8 +6,10 @@ const multer = require('multer');
 const UPLOAD_ROOT = path.join(__dirname, '../../uploads');
 const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
 const MESSAGE_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'messages');
+const STATUS_DIR = path.join(UPLOAD_ROOT, 'statuses');
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 fs.mkdirSync(MESSAGE_UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(STATUS_DIR, { recursive: true });
 
 // Ekstensi ditentukan SERVER dari mimetype, bukan dari nama file kiriman client
 const EXT_BY_MIME = {
@@ -55,5 +57,17 @@ const messageUpload = multer({
   },
 }).single('file');
 
-module.exports = { UPLOAD_ROOT, AVATAR_DIR, avatarUpload, messageUpload };
+const statusUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, STATUS_DIR),
+    filename: (req, file, cb) =>
+      cb(null, `${crypto.randomUUID()}${EXT_BY_MIME[file.mimetype]}`),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (EXT_BY_MIME[file.mimetype]) return cb(null, true);
+    cb(new Error('Status hanya mendukung gambar JPG, PNG, atau WebP'));
+  },
+}).single('file');
 
+module.exports = { UPLOAD_ROOT, AVATAR_DIR, STATUS_DIR, avatarUpload, messageUpload, statusUpload };

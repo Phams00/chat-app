@@ -25,6 +25,7 @@ model User {
   callsAsCallee  CallLog[]            @relation("CalleeLogs")
   contacts       Contact[]            @relation("OwnerContacts")
   contactOf      Contact[]            @relation("ContactOfUser")
+  statuses       Status[]
 
   @@map("users")
 }
@@ -103,4 +104,19 @@ model Contact {
 
   @@unique([userId, contactUserId])
   @@map("contacts")
+}
+
+model Status {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  content   String?
+  mediaUrl  String?  @map("media_url")
+  mediaType String   @default("text") @map("media_type")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("statuses")
 }

@@ -1,6 +1,4 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import useAuthStore from '../../store/authStore';
-import { getMediaUrl } from '../../utils/media';
 import './Sidebar.css';
 
 export default function Sidebar() {
@@ -8,6 +6,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const menuItems = [
     { path: '/', icon: 'chat_bubble', title: 'Chats' },
+    { path: '/status', icon: 'donut_large', title: 'Status' },
     { path: '/contacts', icon: 'people', title: 'Kontak' },
   ];
 
