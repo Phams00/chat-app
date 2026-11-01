@@ -2,7 +2,11 @@ const fs = require('fs');
 const conversationService = require('../services/conversationService');
 const messageService = require('../services/messageService');
 const { assertMember } = conversationService;
-const { messageUpload } = require('../config/upload');
+const {
+  MAX_ATTACHMENT_SIZE,
+  MAX_VIDEO_SIZE,
+  messageUpload,
+} = require('../config/upload');
 
 async function createOrGet(req, res) {
   try {
@@ -46,12 +50,23 @@ async function uploadAttachment(req, res) {
     if (uploadErr) {
       const message =
         uploadErr.code === 'LIMIT_FILE_SIZE'
-          ? 'Ukuran lampiran maksimal 10 MB'
+          ? 'Ukuran unggahan maksimal 100 MB untuk video dan 10 MB untuk file lain'
           : uploadErr.message;
-      return res.status(400).json({ error: message });
+      return res.status(uploadErr.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: message });
     }
 
     if (!req.file) return res.status(400).json({ error: 'Pilih file yang ingin dikirim' });
+
+    const maxSize = req.file.mimetype.startsWith('video/')
+      ? MAX_VIDEO_SIZE
+      : MAX_ATTACHMENT_SIZE;
+    if (req.file.size > maxSize) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error(err);
+      });
+      const maxSizeMb = Math.round(maxSize / (1024 * 1024));
+      return res.status(413).json({ error: `Ukuran lampiran maksimal ${maxSizeMb} MB` });
+    }
 
     const caption = String(req.body.caption || '').trim();
     if (caption.length > 1000) {

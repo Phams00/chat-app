@@ -3,10 +3,14 @@ const { assertMember } = require('../services/conversationService');
 const prisma = require('../config/prisma');
 
 function registerMessageHandlers(io, socket) {
+  socket.data.joinedConversations = new Set();
+
   socket.on('join_conversation', async (conversationId) => {
     try {
+      if (socket.data.joinedConversations.has(conversationId)) return;
       await assertMember(conversationId, socket.userId);
       socket.join(conversationId);
+      socket.data.joinedConversations.add(conversationId);
     } catch (err) {
       socket.emit('message_error', { error: err.message });
     }
@@ -14,6 +18,7 @@ function registerMessageHandlers(io, socket) {
 
   socket.on('leave_conversation', (conversationId) => {
     socket.leave(conversationId);
+    socket.data.joinedConversations.delete(conversationId);
   });
 
   socket.on('send_message', async ({ conversationId, content, type }) => {
@@ -33,7 +38,9 @@ function registerMessageHandlers(io, socket) {
   // --- Typing indicator ---
   socket.on('typing_start', async ({ conversationId }) => {
     try {
-      await assertMember(conversationId, socket.userId);
+      if (!socket.data.joinedConversations.has(conversationId)) {
+        await assertMember(conversationId, socket.userId);
+      }
       socket.to(conversationId).emit('user_typing', { userId: socket.userId, conversationId });
     } catch (err) {
       socket.emit('message_error', { error: err.message });
@@ -42,7 +49,9 @@ function registerMessageHandlers(io, socket) {
 
   socket.on('typing_stop', async ({ conversationId }) => {
     try {
-      await assertMember(conversationId, socket.userId);
+      if (!socket.data.joinedConversations.has(conversationId)) {
+        await assertMember(conversationId, socket.userId);
+      }
       socket.to(conversationId).emit('user_stop_typing', { userId: socket.userId, conversationId });
     } catch (err) {
       socket.emit('message_error', { error: err.message });

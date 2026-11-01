@@ -25,6 +25,7 @@ io.use(socketAuthMiddleware);
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+  socket.join(`user:${socket.userId}`);
 
   // event dummy untuk tes koneksi
   socket.on('ping_test', (data) => {

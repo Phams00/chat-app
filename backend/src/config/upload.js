@@ -7,11 +7,13 @@ const UPLOAD_ROOT = path.join(__dirname, '../../uploads');
 const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
 const MESSAGE_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'messages');
 const STATUS_DIR = path.join(UPLOAD_ROOT, 'statuses');
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 fs.mkdirSync(MESSAGE_UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(STATUS_DIR, { recursive: true });
 
-// Ekstensi ditentukan SERVER dari mimetype, bukan dari nama file kiriman client
+// MIME MP4 generik dinormalisasi sebelum ekstensi file ditentukan.
 const EXT_BY_MIME = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
@@ -36,6 +38,19 @@ const MESSAGE_EXT_BY_MIME = {
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
 };
 
+function getMessageMimeType(file) {
+  const mimeType = file.mimetype.split(';', 1)[0].trim().toLowerCase();
+  if (mimeType === 'application/mp4') return 'video/mp4';
+  if (MESSAGE_EXT_BY_MIME[mimeType]) return mimeType;
+
+  const isGenericMimeType = !mimeType || mimeType === 'application/octet-stream';
+  if (isGenericMimeType && path.extname(file.originalname).toLowerCase() === '.mp4') {
+    return 'video/mp4';
+  }
+
+  return null;
+}
+
 const avatarUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, AVATAR_DIR),
@@ -55,9 +70,13 @@ const messageUpload = multer({
     filename: (req, file, cb) =>
       cb(null, `${crypto.randomUUID()}${MESSAGE_EXT_BY_MIME[file.mimetype]}`),
   }),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: MAX_VIDEO_SIZE },
   fileFilter: (req, file, cb) => {
-    if (MESSAGE_EXT_BY_MIME[file.mimetype]) return cb(null, true);
+    const mimeType = getMessageMimeType(file);
+    if (mimeType) {
+      file.mimetype = mimeType;
+      return cb(null, true);
+    }
     cb(new Error('Format file tidak didukung. Gunakan gambar, video, PDF, atau dokumen Office.'));
   },
 }).single('file');
@@ -75,4 +94,13 @@ const statusUpload = multer({
   },
 }).single('file');
 
-module.exports = { UPLOAD_ROOT, AVATAR_DIR, STATUS_DIR, avatarUpload, messageUpload, statusUpload };
+module.exports = {
+  UPLOAD_ROOT,
+  AVATAR_DIR,
+  STATUS_DIR,
+  MAX_ATTACHMENT_SIZE,
+  MAX_VIDEO_SIZE,
+  avatarUpload,
+  messageUpload,
+  statusUpload,
+};

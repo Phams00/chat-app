@@ -31,6 +31,30 @@ function formatConversationTime(dateString) {
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
+function getLastMessagePreview(conversation, currentUserId) {
+  const lastMessage = conversation.lastMessage;
+  if (!lastMessage) return 'Belum ada pesan';
+
+  const mediaLabel = {
+    image: '📷 Foto',
+    video: '🎬 Video',
+    file: '📎 File',
+  }[lastMessage.type];
+  const messagePreview = mediaLabel
+    ? `${mediaLabel}${lastMessage.content ? `: ${lastMessage.content}` : ''}`
+    : lastMessage.content || '';
+  const senderId = lastMessage.sender?.id || lastMessage.senderId;
+  if (!senderId) return messagePreview;
+
+  const senderName =
+    senderId === currentUserId
+      ? 'Anda'
+      : lastMessage.sender?.name ||
+        conversation.members?.find((member) => member.id === senderId)?.name;
+
+  return senderName ? `${senderName}: ${messagePreview}` : messagePreview;
+}
+
 function ConversationList({
   conversations,
   currentUserId,
@@ -100,14 +124,7 @@ function ConversationList({
 
               <span className="chat-bottomline">
                 <span className="chat-preview">
-                  {conversation.lastMessage?.content ||
-                    (conversation.lastMessage?.type === 'image'
-                      ? '📷 Foto'
-                      : conversation.lastMessage?.type === 'video'
-                        ? '🎬 Video'
-                      : conversation.lastMessage?.type === 'file'
-                        ? '📎 File'
-                        : 'Belum ada pesan')}
+                  {getLastMessagePreview(conversation, currentUserId)}
                 </span>
               </span>
             </span>

@@ -4,6 +4,9 @@ async function addContact(req, res) {
   try {
     const { phoneNumber } = req.body;
     const result = await contactService.addContact(req.user.id, phoneNumber);
+    req.app.get('io')
+      .to(`user:${req.user.id}`)
+      .emit('contact_added', result);
     res.status(201).json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

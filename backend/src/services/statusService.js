@@ -20,6 +20,25 @@ function presentStatus(status) {
   };
 }
 
+async function getStatusAudience(userId) {
+  const owner = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      avatarUrl: true,
+      contacts: { select: { contactUserId: true } },
+    },
+  });
+  if (!owner) throw statusError('User tidak ditemukan', 404);
+
+  const { contacts, ...user } = owner;
+  return {
+    user,
+    userIds: [userId, ...contacts.map(({ contactUserId }) => contactUserId)],
+  };
+}
+
 async function listStatuses(userId) {
   const contacts = await prisma.contact.findMany({
     where: { userId },
@@ -128,4 +147,10 @@ async function deleteStatus(userId, statusId) {
   }
 }
 
-module.exports = { listStatuses, createStatus, getStatusMediaPath, deleteStatus };
+module.exports = {
+  listStatuses,
+  createStatus,
+  getStatusMediaPath,
+  deleteStatus,
+  getStatusAudience,
+};

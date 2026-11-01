@@ -119,6 +119,7 @@ function ChatRoom() {
   const messageInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const typingActiveRef = useRef(false);
 
   const loadStateIsCurrent = conversationLoad.conversationId === conversationId;
   const loading = Boolean(conversationId) && (!loadStateIsCurrent || conversationLoad.loading);
@@ -184,6 +185,8 @@ function ChatRoom() {
     if (!socket || !conversationId) return undefined;
 
     function handleNewMessage(newMessage) {
+      if (newMessage.conversationId !== conversationId) return;
+
       setMessages((current) =>
         current.some((item) => item.id === newMessage.id)
           ? current
@@ -245,7 +248,6 @@ function ChatRoom() {
       socket.off('user_stop_typing', handleUserStopTyping);
       socket.off('message_read', handleMessageRead);
       socket.off('message_error', handleMessageError);
-      socket.emit('leave_conversation', conversationId);
     };
   }, [conversationId, currentUserId, socket]);
 
@@ -255,17 +257,29 @@ function ChatRoom() {
     }
   }, [messages, otherTyping]);
 
-  useEffect(() => () => clearTimeout(typingTimeoutRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(typingTimeoutRef.current);
+    if (typingActiveRef.current && socket?.connected && conversationId) {
+      socket.emit('typing_stop', { conversationId });
+    }
+    typingActiveRef.current = false;
+  }, [conversationId, socket]);
 
   function handleTextChange(event) {
     setMessage(event.target.value);
     setError('');
     if (!socket?.connected) return;
 
-    socket.emit('typing_start', { conversationId });
+    if (!typingActiveRef.current) {
+      socket.emit('typing_start', { conversationId });
+      typingActiveRef.current = true;
+    }
     clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('typing_stop', { conversationId });
+      if (typingActiveRef.current && socket.connected) {
+        socket.emit('typing_stop', { conversationId });
+      }
+      typingActiveRef.current = false;
     }, 1500);
   }
 
@@ -276,7 +290,11 @@ function ChatRoom() {
     setError('');
 
     if (selectedAttachment) {
-      if (socket?.connected) socket.emit('typing_stop', { conversationId });
+      clearTimeout(typingTimeoutRef.current);
+      if (typingActiveRef.current && socket?.connected) {
+        socket.emit('typing_stop', { conversationId });
+      }
+      typingActiveRef.current = false;
       const formData = new FormData();
       formData.append('file', selectedAttachment);
       formData.append('caption', content);
@@ -309,7 +327,11 @@ function ChatRoom() {
       return;
     }
 
-    socket.emit('typing_stop', { conversationId });
+    clearTimeout(typingTimeoutRef.current);
+    if (typingActiveRef.current) {
+      socket.emit('typing_stop', { conversationId });
+      typingActiveRef.current = false;
+    }
     socket.emit('send_message', { conversationId, content, type: 'text' });
     setMessage('');
   }
@@ -437,7 +459,7 @@ function ChatRoom() {
             ref={fileInputRef}
             className="attachment-file-input"
             type="file"
-            accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/x-m4v,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/x-m4v,.mp4,.webm,.ogv,.mov,.m4v,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
             onChange={handleAttachmentChange}
             aria-label="Pilih file atau gambar"
           />
@@ -487,7 +509,8 @@ function ChatRoom() {
               <Icon>
                 {selectedAttachment.type.startsWith('image/')
                   ? 'image'
-                  : selectedAttachment.type.startsWith('video/')
+                  : selectedAttachment.type.startsWith('video/') ||
+                      /\.mp4$/i.test(selectedAttachment.name)
                     ? 'movie'
                     : 'description'}
               </Icon>

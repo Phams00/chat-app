@@ -5,7 +5,12 @@ async function list(req, res) {
 }
 
 async function create(req, res) {
+  const { user, userIds } = await statusService.getStatusAudience(req.user.id);
   const status = await statusService.createStatus(req.user.id, req.statusContent, req.file);
+  const io = req.app.get('io');
+  userIds.forEach((userId) => {
+    io.to(`user:${userId}`).emit('status_created', { status, user });
+  });
   res.status(201).json(status);
 }
 
@@ -15,7 +20,15 @@ async function media(req, res) {
 }
 
 async function remove(req, res) {
+  const { userIds } = await statusService.getStatusAudience(req.user.id);
   await statusService.deleteStatus(req.user.id, req.params.id);
+  const io = req.app.get('io');
+  userIds.forEach((userId) => {
+    io.to(`user:${userId}`).emit('status_deleted', {
+      statusId: req.params.id,
+      userId: req.user.id,
+    });
+  });
   res.status(204).end();
 }
 

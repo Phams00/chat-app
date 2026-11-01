@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
@@ -7,6 +7,13 @@ import { connectSocket } from '../../services/socket';
 import { getMediaUrl } from '../../utils/media';
 import { getInitials } from '../../utils/initials';
 import './Contacts.css';
+
+function upsertContact(contacts, contact) {
+  return [
+    contact,
+    ...contacts.filter(({ contactUser }) => contactUser.id !== contact.contactUser.id),
+  ];
+}
 
 function Contacts() {
   const [contacts, setContacts] = useState([]);
@@ -19,32 +26,51 @@ function Contacts() {
   const [openingChat, setOpeningChat] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const contactsRevisionRef = useRef(0);
   const token = useAuthStore((state) => state.token);
   const onlineUsers = usePresenceStore((state) => state.onlineUsers);
   const navigate = useNavigate();
 
   useEffect(() => {
-    connectSocket(token);
+    const socket = connectSocket(token);
+    if (!socket) return undefined;
     let active = true;
 
-    api.get('/contacts')
-      .then((response) => {
-        if (active) setContacts(response.data);
-      })
-      .catch((requestError) => {
-        if (active) {
-          setError(
-            requestError.response?.data?.error ||
-              'Kontak belum dapat dimuat. Periksa koneksi lalu coba lagi.',
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    function refreshContacts() {
+      const requestRevision = contactsRevisionRef.current;
+      api.get('/contacts')
+        .then((response) => {
+          if (active && requestRevision === contactsRevisionRef.current) {
+            setContacts(response.data);
+          }
+        })
+        .catch((requestError) => {
+          if (active) {
+            setError(
+              requestError.response?.data?.error ||
+                'Kontak belum dapat dimuat. Periksa koneksi lalu coba lagi.',
+            );
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }
+
+    function handleContactAdded(contact) {
+      if (!contact?.contactUser?.id) return;
+      contactsRevisionRef.current += 1;
+      setContacts((current) => upsertContact(current, contact));
+    }
+
+    socket.on('contact_added', handleContactAdded);
+    socket.on('connect', refreshContacts);
+    refreshContacts();
 
     return () => {
       active = false;
+      socket.off('contact_added', handleContactAdded);
+      socket.off('connect', refreshContacts);
     };
   }, [token]);
 
@@ -87,7 +113,8 @@ function Contacts() {
     setNotice('');
     try {
       const response = await api.post('/contacts', { phoneNumber: normalizedNumber });
-      setContacts((current) => [response.data, ...current]);
+      contactsRevisionRef.current += 1;
+      setContacts((current) => upsertContact(current, response.data));
       setSelectedContactId(response.data.contactUser.id);
       setPhoneNumber('');
       setFormOpen(false);

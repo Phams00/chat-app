@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ConversationList from '../../components/ConversationList/ConversationList';
 import api from '../../services/api';
@@ -12,6 +12,7 @@ function ChatList() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const conversationIdsRef = useRef([]);
   const token = useAuthStore((state) => state.token);
   const currentUserId = useAuthStore((state) => state.user?.id);
   const onlineUsers = usePresenceStore((state) => state.onlineUsers);
@@ -19,12 +20,29 @@ function ChatList() {
   const { id: selectedConversationId } = useParams();
 
   useEffect(() => {
-    connectSocket(token);
+    const socket = connectSocket(token);
+    if (!socket) return undefined;
     let active = true;
+    let joinedConversationIds = [];
+
+    function joinConversations() {
+      conversationIdsRef.current.forEach((conversationId) => {
+        socket.emit('join_conversation', conversationId);
+      });
+    }
+
+    socket.on('connect', joinConversations);
 
     api.get('/conversations')
       .then((response) => {
-        if (active) setConversations(response.data);
+        if (active) {
+          setConversations(response.data);
+          conversationIdsRef.current = response.data.map(
+            (conversation) => conversation.conversationId,
+          );
+          joinedConversationIds = conversationIdsRef.current;
+          if (socket.connected) joinConversations();
+        }
       })
       .catch((requestError) => {
         if (active) {
@@ -40,6 +58,11 @@ function ChatList() {
 
     return () => {
       active = false;
+      socket.off('connect', joinConversations);
+      joinedConversationIds.forEach((conversationId) => {
+        socket.emit('leave_conversation', conversationId);
+      });
+      conversationIdsRef.current = [];
     };
   }, [token]);
 

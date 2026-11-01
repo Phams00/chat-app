@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
+import { connectSocket } from '../../services/socket';
 import { getMediaUrl } from '../../utils/media';
 import { getInitials } from '../../utils/initials';
 import './Status.css';
@@ -21,6 +22,8 @@ function Status() {
   const [submitting, setSubmitting] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [error, setError] = useState('');
+  const statusesRevisionRef = useRef(0);
+  const token = useAuthStore((state) => state.token);
   const currentUser = useAuthStore((state) => state.user);
 
   async function loadStatuses() {
@@ -29,24 +32,88 @@ function Status() {
   }
 
   useEffect(() => {
+    const socket = connectSocket(token);
+    if (!socket) return undefined;
     let active = true;
-    api.get('/statuses')
-      .then((response) => {
-        if (active) setStatusGroups(response.data);
-      })
-      .catch((requestError) => {
-        if (active) {
-          setError(requestError.response?.data?.error || 'Status belum dapat dimuat. Coba lagi.');
+
+    function refreshStatuses() {
+      const requestRevision = statusesRevisionRef.current;
+      api.get('/statuses')
+        .then((response) => {
+          if (active && requestRevision === statusesRevisionRef.current) {
+            setStatusGroups(response.data);
+          }
+        })
+        .catch((requestError) => {
+          if (active) {
+            setError(requestError.response?.data?.error || 'Status belum dapat dimuat. Coba lagi.');
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }
+
+    function handleStatusCreated({ status, user }) {
+      if (!status || !user) return;
+      statusesRevisionRef.current += 1;
+
+      setStatusGroups((current) => {
+        if (user.id === currentUser?.id) {
+          const mine = [status, ...current.mine.filter((item) => item.id !== status.id)]
+            .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+          return { ...current, mine };
         }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+
+        const existingGroup = current.contacts.find((group) => group.user.id === user.id);
+        const nextGroup = {
+          user: existingGroup?.user || user,
+          statuses: [status, ...(existingGroup?.statuses || []).filter((item) => item.id !== status.id)]
+            .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt)),
+        };
+        const contacts = [
+          ...current.contacts.filter((group) => group.user.id !== user.id),
+          nextGroup,
+        ].sort((first, second) =>
+          new Date(second.statuses[0].createdAt) - new Date(first.statuses[0].createdAt),
+        );
+        return { ...current, contacts };
       });
+    }
+
+    function handleStatusDeleted({ statusId, userId }) {
+      statusesRevisionRef.current += 1;
+      setStatusGroups((current) => ({
+        mine: current.mine.filter((status) => status.id !== statusId),
+        contacts: current.contacts
+          .map((group) => ({
+            ...group,
+            statuses: group.statuses.filter((status) => status.id !== statusId),
+          }))
+          .filter((group) => group.statuses.length > 0 || group.user.id !== userId),
+      }));
+      setSelectedStatusId((selectedId) => selectedId === statusId ? null : selectedId);
+    }
+
+    function handleContactsChanged() {
+      statusesRevisionRef.current += 1;
+      refreshStatuses();
+    }
+
+    socket.on('status_created', handleStatusCreated);
+    socket.on('status_deleted', handleStatusDeleted);
+    socket.on('contact_added', handleContactsChanged);
+    socket.on('connect', refreshStatuses);
+    refreshStatuses();
 
     return () => {
       active = false;
+      socket.off('status_created', handleStatusCreated);
+      socket.off('status_deleted', handleStatusDeleted);
+      socket.off('contact_added', handleContactsChanged);
+      socket.off('connect', refreshStatuses);
     };
-  }, []);
+  }, [currentUser?.id, token]);
 
   const allStatuses = useMemo(
     () => [
