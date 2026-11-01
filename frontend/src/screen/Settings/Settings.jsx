@@ -52,7 +52,6 @@ export default function Settings() {
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState('');
   const [activeSection, setActiveSection] = useState('profile');
-  const [doodleOpacityDraft, setDoodleOpacityDraft] = useState(null);
 
   const initial = (name || user?.email || '?')
     .trim()
@@ -152,7 +151,6 @@ export default function Settings() {
   async function resetPreferences() {
     try {
       await updatePreferences(DEFAULT_PREFERENCES);
-      setDoodleOpacityDraft(null);
       setNotice('Preferensi dikembalikan ke pengaturan awal.');
     } catch (error) {
       setNotice(error.response?.data?.error || 'Preferensi gagal direset. Coba lagi.');
@@ -329,56 +327,6 @@ export default function Settings() {
                   {theme.label}
                 </button>
               ))}
-            </div>
-            <div className="settings-settings-group">
-              <div className="settings-setting-heading">
-                <strong>Wallpaper percakapan</strong>
-                <small>Pola lembut atau latar polos.</small>
-              </div>
-              <div className="settings-inline-actions">
-                <button
-                  type="button"
-                  className={preferences.wallpaper === 'doodles' ? 'selected' : ''}
-                  disabled={isSavingPreference}
-                  onClick={() => savePreference('wallpaper', 'doodles')}
-                >
-                  Pola hangat
-                </button>
-                <button
-                  type="button"
-                  className={preferences.wallpaper === 'plain' ? 'selected' : ''}
-                  disabled={isSavingPreference}
-                  onClick={() => savePreference('wallpaper', 'plain')}
-                >
-                  Polos
-                </button>
-              </div>
-              {preferences.wallpaper === 'doodles' && (
-                <label className="settings-range-row">
-                  <span>Intensitas pola <strong>{preferences.doodleOpacity}%</strong></span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="60"
-                    step="1"
-                    value={doodleOpacityDraft ?? preferences.doodleOpacity}
-                    disabled={isSavingPreference}
-                    onChange={(event) => setDoodleOpacityDraft(Number(event.target.value))}
-                    onPointerUp={(event) => {
-                      const value = Number(event.currentTarget.value);
-                      setDoodleOpacityDraft(null);
-                      savePreference('doodleOpacity', value);
-                    }}
-                    onKeyUp={(event) => {
-                      if (event.key.startsWith('Arrow')) {
-                        const value = Number(event.currentTarget.value);
-                        setDoodleOpacityDraft(null);
-                        savePreference('doodleOpacity', value);
-                      }
-                    }}
-                  />
-                </label>
-              )}
             </div>
             <div className="settings-settings-group">
               <div className="settings-setting-heading">

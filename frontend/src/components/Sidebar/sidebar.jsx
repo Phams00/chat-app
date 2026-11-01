@@ -6,7 +6,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const menuItems = [
     { path: '/', icon: 'chat_bubble', title: 'Chats' },
-    { path: '/status', icon: 'donut_large', title: 'Status' },
+    { path: '/status', icon: 'donut_large', title: 'Pooddle' },
     { path: '/contacts', icon: 'people', title: 'Kontak' },
   ];
 

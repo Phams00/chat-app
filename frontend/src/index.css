@@ -43,7 +43,6 @@
   --app-accent: #ff6b35;
   --app-accent-soft: #fff5eb;
   --chat-font-size: 15px;
-  --wallpaper-opacity: 0.28;
 }
 
 :root[data-theme='dark'] {
@@ -125,16 +124,8 @@ body {
   font-size: var(--chat-font-size);
 }
 
-.chat-list[data-wallpaper='doodles'] .message-thread,
 .message-thread {
-  background-image:
-    radial-gradient(circle at 14px 14px, rgb(255 169 77 / var(--wallpaper-opacity)) 1px, transparent 1.5px),
-    radial-gradient(circle at 42px 42px, rgb(255 107 53 / calc(var(--wallpaper-opacity) * 0.45)) 1px, transparent 1.5px);
-  background-size: 56px 56px;
-}
-
-:root[data-wallpaper='plain'] .message-thread {
-  background-image: none;
+  background-color: var(--app-canvas);
 }
 
 :root[data-theme='dark'] .message-thread,

@@ -95,7 +95,7 @@
   gap: 20px;
   border: 1px solid #f2e6de;
   border-radius: 18px;
-  background: linear-gradient(120deg, #fff4eb, #fffdfb 75%);
+  background: #fff4eb;
 }
 
 .settings-avatar {
@@ -646,7 +646,7 @@
   padding: 24px;
   margin: 0 0 16px;
   border-color: #e2e8f0;
-  background: linear-gradient(120deg, #fff 0%, #fff7f1 100%);
+  background: #fff7f1;
   box-shadow: 0 4px 16px #0f172a08;
 }
 

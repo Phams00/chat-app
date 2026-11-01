@@ -418,8 +418,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  background-image: radial-gradient(#d9d1ca 0.75px, transparent 0.75px);
-  background-size: 18px 18px;
+  background: #fbf9f7;
 }
 
 .contact-detail-actions {

@@ -3,11 +3,11 @@ import { getMediaUrl } from '../../utils/media';
 import { getInitials } from '../../utils/initials';
 
 const avatarColors = [
-  ['#f3b69f', '#cd7f5d'],
-  ['#d6a781', '#ba8773'],
-  ['#90a8c6', '#6d7ea5'],
-  ['#8cc7c0', '#5fa7a4'],
-  ['#d1b9ff', '#9e82d9'],
+  '#f3b69f',
+  '#d6a781',
+  '#90a8c6',
+  '#8cc7c0',
+  '#d1b9ff',
 ];
 
 function formatConversationTime(dateString) {
@@ -90,7 +90,7 @@ function ConversationList({
           conversation.members?.find((member) => member.id !== currentUserId) ||
           conversation.members?.[0];
         const displayName = otherMember?.name || conversation.name || 'Group chat';
-        const colorPair = avatarColors[displayName.length % avatarColors.length];
+        const avatarColor = avatarColors[displayName.length % avatarColors.length];
         const isOnline = Boolean(otherMember && onlineUsers.has(otherMember.id));
 
         return (
@@ -103,8 +103,7 @@ function ConversationList({
             <span
               className={`avatar${isOnline ? ' online' : ''}`}
               style={{
-                '--avatar-start': colorPair[0],
-                '--avatar-end': colorPair[1],
+                '--avatar-start': avatarColor,
               }}
             >
               {otherMember?.avatarUrl ? (

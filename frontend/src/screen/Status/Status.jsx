@@ -46,7 +46,7 @@ function Status() {
         })
         .catch((requestError) => {
           if (active) {
-            setError(requestError.response?.data?.error || 'Status belum dapat dimuat. Coba lagi.');
+            setError(requestError.response?.data?.error || 'Pooddle belum dapat dimuat. Coba lagi.');
           }
         })
         .finally(() => {
@@ -139,7 +139,7 @@ function Status() {
       })
       .catch((requestError) => {
         if (active) {
-          setError(requestError.response?.data?.error || 'Gambar status tidak dapat dimuat.');
+          setError(requestError.response?.data?.error || 'Gambar Pooddle tidak dapat dimuat.');
         }
       });
 
@@ -167,7 +167,7 @@ function Status() {
       setFile(null);
       setComposerOpen(false);
     } catch (requestError) {
-      setError(requestError.response?.data?.error || 'Status tidak dapat dibagikan. Coba lagi.');
+      setError(requestError.response?.data?.error || 'Pooddle tidak dapat dibagikan. Coba lagi.');
     } finally {
       setSubmitting(false);
     }
@@ -181,7 +181,7 @@ function Status() {
       setSelectedStatusId(null);
       await loadStatuses();
     } catch (requestError) {
-      setError(requestError.response?.data?.error || 'Status tidak dapat dihapus. Coba lagi.');
+      setError(requestError.response?.data?.error || 'Pooddle tidak dapat dihapus. Coba lagi.');
     }
   }
 
@@ -192,17 +192,17 @@ function Status() {
 
   return (
     <main className="status-page">
-      <aside className="status-list-panel" aria-label="Daftar status">
+      <aside className="status-list-panel" aria-label="Daftar Pooddle">
         <header className="status-header">
           <div>
             <p className="status-eyebrow">Momen terbaru</p>
-            <h1>Status</h1>
+            <h1>Pooddle</h1>
           </div>
           <button
             className="status-icon-button"
             type="button"
-            aria-label="Buat status"
-            title="Buat status"
+            aria-label="Buat Pooddle"
+            title="Buat Pooddle"
             onClick={() => setComposerOpen((open) => !open)}
           >
             <span className="material-symbols-outlined" aria-hidden="true">add</span>
@@ -213,7 +213,7 @@ function Status() {
 
         <div className="status-list-scroll">
           <section className="status-section">
-            <h2>Status saya</h2>
+            <h2>Pooddle saya</h2>
             <button
               className="status-row"
               type="button"
@@ -231,7 +231,7 @@ function Status() {
                 <strong>{currentUser?.name || 'Anda'}</strong>
                 <span>{statusGroups.mine[0]
                   ? `Diperbarui ${formatStatusTime(statusGroups.mine[0].createdAt)}`
-                  : 'Ketuk untuk menambahkan status'}</span>
+                  : 'Ketuk untuk menambahkan Pooddle'}</span>
               </span>
               {statusGroups.mine.length > 0 && (
                 <span className="status-count">{statusGroups.mine.length}</span>
@@ -242,9 +242,9 @@ function Status() {
           <section className="status-section">
             <h2>Pembaruan terbaru</h2>
             {loading ? (
-              <p className="status-empty">Memuat status...</p>
+              <p className="status-empty">Memuat Pooddle...</p>
             ) : statusGroups.contacts.length === 0 ? (
-              <p className="status-empty">Belum ada status baru dari kontak.</p>
+              <p className="status-empty">Belum ada Pooddle baru dari kontak.</p>
             ) : (
               statusGroups.contacts.map(({ user, statuses }) => (
                 <button
@@ -277,7 +277,7 @@ function Status() {
               edit_note
             </span>
             <h2>Bagikan momen</h2>
-            <p>Status akan hilang setelah 24 jam.</p>
+            <p>Pooddle akan hilang setelah 24 jam.</p>
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -306,7 +306,7 @@ function Status() {
                 Batal
               </button>
               <button className="status-primary-button" type="submit" disabled={submitting}>
-                {submitting ? 'Membagikan...' : 'Bagikan status'}
+                {submitting ? 'Membagikan...' : 'Bagikan Pooddle'}
               </button>
             </div>
           </form>
@@ -322,37 +322,37 @@ function Status() {
                 ) : getInitials(selectedStatus.owner?.name)}
               </span>
               <span>
-                <strong>{selectedStatus.owner?.name || 'Status'}</strong>
+                <strong>{selectedStatus.owner?.name || 'Pooddle'}</strong>
                 <small>{formatStatusTime(selectedStatus.createdAt)}</small>
               </span>
               <div className="status-viewer-controls">
                 {selectedStatus.isMine && (
-                  <button type="button" onClick={deleteStatus} aria-label="Hapus status" title="Hapus status">
+                  <button type="button" onClick={deleteStatus} aria-label="Hapus Pooddle" title="Hapus Pooddle">
                     <span className="material-symbols-outlined">delete</span>
                   </button>
                 )}
-                <button type="button" onClick={() => setSelectedStatusId(null)} aria-label="Tutup status" title="Tutup">
+                <button type="button" onClick={() => setSelectedStatusId(null)} aria-label="Tutup Pooddle" title="Tutup">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
             </header>
             {selectedStatus.mediaType === 'image' ? (
               mediaSource.statusId === selectedStatus.id && mediaSource.url ? (
-                <img className="status-viewer-image" src={mediaSource.url} alt={selectedStatus.content || 'Foto status'} />
-              ) : <p className="status-viewer-loading">Memuat foto status...</p>
+                <img className="status-viewer-image" src={mediaSource.url} alt={selectedStatus.content || 'Foto Pooddle'} />
+              ) : <p className="status-viewer-loading">Memuat foto Pooddle...</p>
             ) : (
               <p className="status-viewer-text">{selectedStatus.content}</p>
             )}
             {selectedStatus.mediaType === 'image' && selectedStatus.content && (
               <p className="status-viewer-caption">{selectedStatus.content}</p>
             )}
-            <nav className="status-viewer-navigation" aria-label="Navigasi status">
+            <nav className="status-viewer-navigation" aria-label="Navigasi Pooddle">
               {allStatuses.map((status) => (
                 <button
                   key={status.id}
                   className={status.id === selectedStatus.id ? 'active' : ''}
                   type="button"
-                  aria-label={`Buka status ${status.owner?.name || ''}`}
+                  aria-label={`Buka Pooddle ${status.owner?.name || ''}`}
                   onClick={() => openStatus(status)}
                 />
               ))}
@@ -364,9 +364,9 @@ function Status() {
               donut_large
             </span>
             <h2>Bagikan momen harimu</h2>
-            <p>Status dari kamu dan kontak akan tampil di sini dan hilang setelah 24 jam.</p>
+            <p>Pooddle dari kamu dan kontak akan tampil di sini dan hilang setelah 24 jam.</p>
             <button className="status-primary-button" type="button" onClick={() => setComposerOpen(true)}>
-              Buat status
+              Buat Pooddle
             </button>
           </div>
         )}

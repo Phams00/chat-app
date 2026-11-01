@@ -200,9 +200,7 @@
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: 18px;
-  background:
-    radial-gradient(ellipse at 50% 45%, rgb(255 216 191 / 32%), transparent 58%),
-    var(--app-surface);
+  background: var(--app-surface);
 }
 
 .status-stage-empty,
@@ -356,7 +354,7 @@
   flex-direction: column;
   overflow: hidden;
   border-radius: 22px;
-  background: linear-gradient(145deg, #ffdbd0, #ffad73 52%, #ff6b35);
+  background: #ffad73;
   box-shadow: 0 14px 40px rgb(43 30 22 / 15%);
   color: #2b1e16;
 }
@@ -456,7 +454,7 @@
 .status-viewer-caption {
   margin: 0;
   padding: 10px 16px 28px;
-  background: linear-gradient(transparent, rgb(0 0 0 / 60%));
+  background: rgb(0 0 0 / 60%);
   color: white;
   text-align: center;
 }

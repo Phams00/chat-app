@@ -5,8 +5,6 @@ import { getSocket } from '../services/socket';
 export const DEFAULT_PREFERENCES = Object.freeze({
   theme: 'light',
   fontSize: 15,
-  wallpaper: 'doodles',
-  doodleOpacity: 28,
   enterToSend: true,
   notificationsEnabled: true,
   notificationSound: true,
@@ -19,9 +17,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
 function applyPreferences(preferences) {
   const root = document.documentElement;
   root.dataset.theme = preferences.theme;
-  root.dataset.wallpaper = preferences.wallpaper;
   root.style.setProperty('--chat-font-size', `${preferences.fontSize}px`);
-  root.style.setProperty('--wallpaper-opacity', String(preferences.doodleOpacity / 100));
 }
 
 const usePreferencesStore = create((set) => ({
