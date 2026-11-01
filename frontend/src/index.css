@@ -42,32 +42,59 @@
   --app-muted: #7a6a60;
   --app-accent: #ff6b35;
   --app-accent-soft: #fff5eb;
+  --app-danger: #a33324;
+  --app-danger-soft: #fff0ed;
+  --app-success: #315d3e;
+  --app-success-soft: #e7f1dd;
+  --app-accent-contrast: #fff;
+  --app-online: #10b981;
+  --app-overlay: rgb(46 32 27 / 40%);
+  --app-status-viewer-bg: #ffad73;
+  --app-status-viewer-text: #2b1e16;
   --chat-font-size: 15px;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --app-canvas: #1c1917;
-  --app-surface: #26211d;
-  --app-surface-muted: #302923;
-  --app-border: #493d34;
-  --app-text: #f6eee8;
-  --app-muted: #c0a99b;
-  --app-accent: #ff8659;
-  --app-accent-soft: #39271f;
+  --app-canvas: #121416;
+  --app-surface: #1b1e22;
+  --app-surface-muted: #25292e;
+  --app-border: #343a40;
+  --app-text: #e7e9ec;
+  --app-muted: #a3abb4;
+  --app-accent: #ff8a65;
+  --app-accent-soft: #38261f;
+  --app-danger: #ffaaa0;
+  --app-danger-soft: #3a211f;
+  --app-success: #9bd1a9;
+  --app-success-soft: #1e3025;
+  --app-accent-contrast: #24140f;
+  --app-online: #83c99a;
+  --app-overlay: rgb(0 0 0 / 72%);
+  --app-status-viewer-bg: #7d3f27;
+  --app-status-viewer-text: #fff3ec;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme='system'] {
     color-scheme: dark;
-    --app-canvas: #1c1917;
-    --app-surface: #26211d;
-    --app-surface-muted: #302923;
-    --app-border: #493d34;
-    --app-text: #f6eee8;
-    --app-muted: #c0a99b;
-    --app-accent: #ff8659;
-    --app-accent-soft: #39271f;
+    --app-canvas: #121416;
+    --app-surface: #1b1e22;
+    --app-surface-muted: #25292e;
+    --app-border: #343a40;
+    --app-text: #e7e9ec;
+    --app-muted: #a3abb4;
+    --app-accent: #ff8a65;
+    --app-accent-soft: #38261f;
+    --app-danger: #ffaaa0;
+    --app-danger-soft: #3a211f;
+    --app-success: #9bd1a9;
+    --app-success-soft: #1e3025;
+    --app-accent-contrast: #24140f;
+    --app-online: #83c99a;
+    --app-overlay: rgb(0 0 0 / 72%);
+    --app-status-viewer-bg: #7d3f27;
+    --app-status-viewer-text: #fff3ec;
   }
 }
 
@@ -230,6 +257,386 @@ body {
 :root:is([data-theme='dark'], [data-theme='system']) .contact-section-title,
 :root:is([data-theme='dark'], [data-theme='system']) .chat-list-state {
   color: var(--app-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .sidebar {
+  background-color: var(--app-surface);
+  border-color: var(--app-border);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .sidebar-logo img {
+  border-color: var(--app-border);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .sidebar-nav-item {
+  color: var(--app-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .sidebar-nav-item:hover {
+  background-color: var(--app-surface-muted);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .sidebar-nav-item.active {
+  background-color: var(--app-accent);
+  color: #24140f;
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-list,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-sidebar,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail,
+:root:is([data-theme='dark'], [data-theme='system']) .status-list-panel,
+:root:is([data-theme='dark'], [data-theme='system']) .status-stage,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-page {
+  background-color: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .protected-content,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-page,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-empty,
+:root:is([data-theme='dark'], [data-theme='system']) .status-page {
+  background-color: var(--app-canvas);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-header,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-list-header,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-header,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input,
+:root:is([data-theme='dark'], [data-theme='system']) .day-divider span,
+:root:is([data-theme='dark'], [data-theme='system']) .incoming-bubble,
+:root:is([data-theme='dark'], [data-theme='system']) .photo-message,
+:root:is([data-theme='dark'], [data-theme='system']) .emoji-picker,
+:root:is([data-theme='dark'], [data-theme='system']) .emoji-picker button:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-card,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header-version {
+  background-color: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-user h2,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-actions button:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-back-button:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .day-divider span,
+:root:is([data-theme='dark'], [data-theme='system']) .incoming-bubble,
+:root:is([data-theme='dark'], [data-theme='system']) .photo-message p,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input-box input,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input-box textarea,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-page,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header h1,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-info h2,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-card-heading h2,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-item-content strong,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-theme-current strong,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-row strong,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal-top h2 {
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-row:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-row:focus-visible,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-row.active,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-count,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-filter,
+:root:is([data-theme='dark'], [data-theme='system']) .conversation:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .unread-banner,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-search,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-add-form,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-action:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-action.active,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-item:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-item.selected,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-hero,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-nav,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-item-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-security-note,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-footer,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-readonly {
+  background-color: var(--app-surface-muted);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-search input,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-filter,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input-box,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-search input,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-add-form > label,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-add-fields input,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal input,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal textarea,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-actions .settings-button-secondary,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-status-edit,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-button-secondary {
+  background-color: var(--app-canvas);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-title-wrapper h1,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-name,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-actions h2,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile h2,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-info h2,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header > div > p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-info > p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-handle,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-bio,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-card-heading p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-item-content p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-theme-current p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-row p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-footer p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-feature-note,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-footer,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-label,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-readonly,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-char-count,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal > label {
+  color: var(--app-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-search input::placeholder,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-search input::placeholder,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-add-fields input::placeholder,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input-box input::placeholder,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input-box textarea::placeholder {
+  color: var(--app-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-actions button,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-back-button,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input .message-action-button,
+:root:is([data-theme='dark'], [data-theme='system']) .message-input-box button,
+:root:is([data-theme='dark'], [data-theme='system']) .attachment-preview,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-state,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-typing,
+:root:is([data-theme='dark'], [data-theme='system']) .message-time,
+:root:is([data-theme='dark'], [data-theme='system']) .outgoing-meta,
+:root:is([data-theme='dark'], [data-theme='system']) .photo-meta,
+:root:is([data-theme='dark'], [data-theme='system']) .conversation-time,
+:root:is([data-theme='dark'], [data-theme='system']) .conversation-message,
+:root:is([data-theme='dark'], [data-theme='system']) .conversation-status small,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-count,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-time,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-preview,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-icon-button,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-section-title,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-empty,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-add-form > p,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-actions p,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile > p,
+:root:is([data-theme='dark'], [data-theme='system']) .profile-actions button,
+:root:is([data-theme='dark'], [data-theme='system']) .status-row-copy > span {
+  color: var(--app-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-user p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-status {
+  color: #83c99a;
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-error,
+:root:is([data-theme='dark'], [data-theme='system']) .status-error,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-notice {
+  background-color: var(--app-danger-soft);
+  border-color: var(--app-border);
+  color: var(--app-danger);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-success {
+  background-color: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-badge,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-theme-current > .material-symbols-outlined,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-heading-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-edit-button:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar-edit,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal-close {
+  background-color: var(--app-accent-soft);
+  border-color: var(--app-border);
+  color: var(--app-accent);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-settings-group {
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-settings-group button,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-theme-current,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-row,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-item,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-card-heading,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-footer {
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-settings-group button {
+  background-color: var(--app-surface);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-settings-group button.selected,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-nav button:hover,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-nav button.active {
+  background-color: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-actions .settings-button-primary {
+  background-color: var(--app-accent);
+  border-color: var(--app-accent);
+  color: var(--app-accent-contrast);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-content .settings-logout-button {
+  background-color: var(--app-danger-soft);
+  border-color: var(--app-border);
+  color: var(--app-danger);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-modal-backdrop {
+  background-color: var(--app-overlay);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-mark,
+:root:is([data-theme='dark'], [data-theme='system']) .profile-actions button:hover:not(:disabled),
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-search button:hover:not(:disabled),
+:root:is([data-theme='dark'], [data-theme='system']) .message-input .message-action-button:hover:not(:disabled) {
+  background-color: var(--app-surface-muted);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-avatar i,
+:root:is([data-theme='dark'], [data-theme='system']) .online-dot,
+:root:is([data-theme='dark'], [data-theme='system']) .avatar.online::after,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-online {
+  border-color: var(--app-surface);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .status-viewer {
+  background-color: var(--app-status-viewer-bg);
+  color: var(--app-status-viewer-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .status-viewer.has-image {
+  background-color: #171412;
+  color: #fff;
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .status-viewer-controls button {
+  background-color: rgb(0 0 0 / 32%);
+  color: #fff;
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar-edit,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-status-edit,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header-version,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-mark,
+:root:is([data-theme='dark'], [data-theme='system']) .profile-actions button,
+:root:is([data-theme='dark'], [data-theme='system']) .message-avatar,
+:root:is([data-theme='dark'], [data-theme='system']) .incoming-message > img {
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-badge {
+  color: var(--app-success);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar-edit,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-status-edit,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-header-version,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-mark,
+:root:is([data-theme='dark'], [data-theme='system']) .profile-actions button,
+:root:is([data-theme='dark'], [data-theme='system']) .message-avatar,
+:root:is([data-theme='dark'], [data-theme='system']) .incoming-message > img {
+  background-color: var(--app-surface-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar-edit {
+  background-color: var(--app-accent);
+  color: var(--app-accent-contrast);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-avatar-edit {
+  border-color: var(--app-surface);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-avatar,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile-avatar,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-avatar-image {
+  background-color: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-section:nth-of-type(2n) .contact-avatar {
+  background-color: var(--app-surface-muted);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .settings-storage-summary > .material-symbols-outlined {
+  color: var(--app-success);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-error,
+:root:is([data-theme='dark'], [data-theme='system']) .message-attachment-error {
+  color: var(--app-danger);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-user p,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-device-status {
+  color: var(--app-online);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .new-chat-button,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-filter.active,
+:root:is([data-theme='dark'], [data-theme='system']) .priority-badge,
+:root:is([data-theme='dark'], [data-theme='system']) .outgoing-bubble,
+:root:is([data-theme='dark'], [data-theme='system']) .audio-message,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-action-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-add-fields button,
+:root:is([data-theme='dark'], [data-theme='system']) .contacts-empty-add,
+:root:is([data-theme='dark'], [data-theme='system']) .status-primary-button,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-button-primary,
+:root:is([data-theme='dark'], [data-theme='system']) .settings-profile-actions .settings-button-primary {
+  background-color: var(--app-accent);
+  color: var(--app-accent-contrast);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .send-button {
+  background: var(--app-accent) !important;
+  color: var(--app-accent-contrast) !important;
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .photo-meta button,
+:root:is([data-theme='dark'], [data-theme='system']) .location-label {
+  background-color: var(--app-surface-muted);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .location-label .material-symbols-outlined,
+:root:is([data-theme='dark'], [data-theme='system']) .photo-meta button strong {
+  color: var(--app-accent);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-detail-back:hover {
+  background-color: var(--app-surface-muted);
+  color: var(--app-text);
 }
 
 .material-symbols-outlined {
