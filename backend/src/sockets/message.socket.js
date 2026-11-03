@@ -21,13 +21,14 @@ function registerMessageHandlers(io, socket) {
     socket.data.joinedConversations.delete(conversationId);
   });
 
-  socket.on('send_message', async ({ conversationId, content, type }) => {
+  socket.on('send_message', async ({ conversationId, content, type, replyToMessageId }) => {
     try {
       const message = await messageService.saveMessage(
         conversationId,
         socket.userId,
         content,
-        type
+        type,
+        replyToMessageId
       );
       io.to(conversationId).emit('new_message', message);
     } catch (err) {

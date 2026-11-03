@@ -39,6 +39,25 @@ async function getMessages(req, res) {
   }
 }
 
+async function deleteMessage(req, res) {
+  try {
+    const deletedMessage = await messageService.deleteMessage(
+      req.params.id,
+      req.params.messageId,
+      req.user.id
+    );
+    const lastMessage = await conversationService.getLastMessage(deletedMessage.conversationId);
+    req.app.get('io').to(deletedMessage.conversationId).emit('message_deleted', {
+      messageId: deletedMessage.id,
+      conversationId: deletedMessage.conversationId,
+      lastMessage,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(err.status || 403).json({ error: err.message });
+  }
+}
+
 async function uploadAttachment(req, res) {
   try {
     await assertMember(req.params.id, req.user.id);
@@ -80,6 +99,7 @@ async function uploadAttachment(req, res) {
         req.user.id,
         req.file,
         caption,
+        req.body.replyToMessageId || null,
       );
       req.app.get('io').to(req.params.id).emit('new_message', message);
       return res.status(201).json(message);
@@ -99,4 +119,11 @@ async function getOne(req, res) {
   }
 }
 
-module.exports = { createOrGet, list, getMessages, uploadAttachment, getOne };
+module.exports = {
+  createOrGet,
+  list,
+  getMessages,
+  deleteMessage,
+  uploadAttachment,
+  getOne,
+};

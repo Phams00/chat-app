@@ -97,6 +97,7 @@ const statusUpload = multer({
 module.exports = {
   UPLOAD_ROOT,
   AVATAR_DIR,
+  MESSAGE_UPLOAD_DIR,
   STATUS_DIR,
   MAX_ATTACHMENT_SIZE,
   MAX_VIDEO_SIZE,

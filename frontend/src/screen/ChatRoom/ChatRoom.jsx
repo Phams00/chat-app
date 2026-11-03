@@ -20,6 +20,10 @@ function formatTime(dateString) {
   return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 }
 
+function getMessagePreview(item) {
+  return item.content || item.attachmentName || (item.attachmentUrl ? 'Lampiran' : 'Pesan');
+}
+
 function MessageContent({ item, onPreviewImage }) {
   const [downloadError, setDownloadError] = useState('');
   const attachmentUrl = getMediaUrl(item.attachmentUrl);
@@ -103,6 +107,9 @@ function ChatRoom() {
   const [otherUser, setOtherUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
+  const [replyTo, setReplyTo] = useState(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -120,6 +127,29 @@ function ChatRoom() {
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const typingActiveRef = useRef(false);
+  const deletedMessageIdsRef = useRef(new Set());
+  const messageElementsRef = useRef(new Map());
+  const highlightTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+
+    function dismissContextMenu(event) {
+      if (!event.target.closest('.message-context-menu')) setContextMenu(null);
+    }
+    function handleContextMenuKey(event) {
+      if (event.key === 'Escape') setContextMenu(null);
+    }
+
+    document.addEventListener('pointerdown', dismissContextMenu);
+    document.addEventListener('keydown', handleContextMenuKey);
+    return () => {
+      document.removeEventListener('pointerdown', dismissContextMenu);
+      document.removeEventListener('keydown', handleContextMenuKey);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => () => clearTimeout(highlightTimeoutRef.current), []);
 
   const loadStateIsCurrent = conversationLoad.conversationId === conversationId;
   const loading = Boolean(conversationId) && (!loadStateIsCurrent || conversationLoad.loading);
@@ -153,7 +183,9 @@ function ChatRoom() {
             (item) => item.conversationId === conversationId,
           );
           const uniqueMessages = new Map(
-            [...messagesResponse.data, ...liveMessages].map((item) => [item.id, item]),
+            [...messagesResponse.data, ...liveMessages]
+              .filter((item) => !deletedMessageIdsRef.current.has(item.id))
+              .map((item) => [item.id, item]),
           );
           return [...uniqueMessages.values()].sort(
             (first, second) =>
@@ -231,6 +263,11 @@ function ChatRoom() {
         current.map((item) => (item.id === messageId ? { ...item, readAt } : item)),
       );
     }
+    function handleMessageDeleted({ messageId, conversationId: deletedConversationId }) {
+      if (deletedConversationId !== conversationId) return;
+      deletedMessageIdsRef.current.add(messageId);
+      setMessages((current) => current.filter((item) => item.id !== messageId));
+    }
     function handleMessageError(payload) {
       setError(payload.error || 'Pesan tidak dapat dikirim. Coba lagi.');
     }
@@ -239,6 +276,7 @@ function ChatRoom() {
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stop_typing', handleUserStopTyping);
     socket.on('message_read', handleMessageRead);
+    socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_error', handleMessageError);
     socket.emit('join_conversation', conversationId);
 
@@ -247,6 +285,7 @@ function ChatRoom() {
       socket.off('user_typing', handleUserTyping);
       socket.off('user_stop_typing', handleUserStopTyping);
       socket.off('message_read', handleMessageRead);
+      socket.off('message_deleted', handleMessageDeleted);
       socket.off('message_error', handleMessageError);
     };
   }, [conversationId, currentUserId, socket]);
@@ -298,6 +337,7 @@ function ChatRoom() {
       const formData = new FormData();
       formData.append('file', selectedAttachment);
       formData.append('caption', content);
+      if (replyTo) formData.append('replyToMessageId', replyTo.id);
       setIsUploading(true);
       try {
         const response = await api.post(
@@ -311,6 +351,7 @@ function ChatRoom() {
         );
         setSelectedAttachment(null);
         setMessage('');
+        setReplyTo(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (requestError) {
         setError(
@@ -332,8 +373,57 @@ function ChatRoom() {
       socket.emit('typing_stop', { conversationId });
       typingActiveRef.current = false;
     }
-    socket.emit('send_message', { conversationId, content, type: 'text' });
+    socket.emit('send_message', {
+      conversationId,
+      content,
+      type: 'text',
+      replyToMessageId: replyTo?.id,
+    });
     setMessage('');
+    setReplyTo(null);
+  }
+
+  function openMessageMenu(event, item) {
+    event.preventDefault();
+    const menuWidth = 190;
+    const menuHeight = item.senderId === currentUserId ? 100 : 56;
+    setContextMenu({
+      item,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+    });
+  }
+
+  function startReply(item) {
+    setReplyTo(item);
+    setContextMenu(null);
+    messageInputRef.current?.focus();
+  }
+
+  function navigateToMessage(messageId) {
+    const messageElement = messageElementsRef.current.get(messageId);
+    if (!messageElement) return;
+
+    clearTimeout(highlightTimeoutRef.current);
+    setHighlightedMessageId(messageId);
+    messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+    }, 1600);
+  }
+
+  async function deleteMessage(messageId) {
+    if (!window.confirm('Hapus pesan ini untuk semua orang?')) return;
+    setError('');
+    try {
+      await api.delete(`/conversations/${conversationId}/messages/${messageId}`);
+      deletedMessageIdsRef.current.add(messageId);
+      setMessages((current) => current.filter((item) => item.id !== messageId));
+      setContextMenu(null);
+      if (replyTo?.id === messageId) setReplyTo(null);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Pesan tidak dapat dihapus. Coba lagi.');
+    }
   }
 
   function insertEmoji(emoji) {
@@ -429,8 +519,27 @@ function ChatRoom() {
           const time = formatTime(item.createdAt);
 
           return isMine ? (
-            <div className="outgoing-message" key={item.id}>
+            <div
+              className={`outgoing-message${highlightedMessageId === item.id ? ' message-highlight' : ''}`}
+              key={item.id}
+              ref={(element) => {
+                if (element) messageElementsRef.current.set(item.id, element);
+                else messageElementsRef.current.delete(item.id);
+              }}
+              onContextMenu={(event) => openMessageMenu(event, item)}
+            >
               <div className={`outgoing-bubble${['image', 'video'].includes(item.type) ? ' has-media-attachment' : ''}`}>
+                {item.replyTo && (
+                  <button
+                    className="message-reply-preview"
+                    type="button"
+                    aria-label={`Lompat ke pesan dari ${item.replyTo.sender?.name || 'pengirim'}`}
+                    onClick={() => navigateToMessage(item.replyTo.id)}
+                  >
+                    <strong>{item.replyTo.sender?.name || 'Pesan'}</strong>
+                    <span>{getMessagePreview(item.replyTo)}</span>
+                  </button>
+                )}
                 <MessageContent item={item} onPreviewImage={setPreviewImage} />
               </div>
               <div className="outgoing-meta">
@@ -439,10 +548,29 @@ function ChatRoom() {
               </div>
             </div>
           ) : (
-            <div className="incoming-message" key={item.id}>
+            <div
+              className={`incoming-message${highlightedMessageId === item.id ? ' message-highlight' : ''}`}
+              key={item.id}
+              ref={(element) => {
+                if (element) messageElementsRef.current.set(item.id, element);
+                else messageElementsRef.current.delete(item.id);
+              }}
+              onContextMenu={(event) => openMessageMenu(event, item)}
+            >
               {avatar(item.sender?.name || otherUser?.name || '', item.sender?.avatarUrl)}
               <div className="incoming-content">
                 <div className="incoming-bubble">
+                  {item.replyTo && (
+                    <button
+                      className="message-reply-preview"
+                      type="button"
+                      aria-label={`Lompat ke pesan dari ${item.replyTo.sender?.name || 'pengirim'}`}
+                      onClick={() => navigateToMessage(item.replyTo.id)}
+                    >
+                      <strong>{item.replyTo.sender?.name || 'Pesan'}</strong>
+                      <span>{getMessagePreview(item.replyTo)}</span>
+                    </button>
+                  )}
                   <MessageContent item={item} onPreviewImage={setPreviewImage} />
                 </div>
                 <span className="message-time">{time}</span>
@@ -452,6 +580,32 @@ function ChatRoom() {
         })}
         {conversationId && otherTyping && <p className="chat-room-typing">{activeOtherUser?.name || 'Kontak'} sedang mengetik...</p>}
       </div>
+
+      {contextMenu && (
+        <div
+          className="message-context-menu"
+          role="menu"
+          aria-label="Aksi pesan"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button type="button" role="menuitem" onClick={() => startReply(contextMenu.item)}>
+            <Icon>reply</Icon>
+            <span>Balas</span>
+          </button>
+          {(contextMenu.item.sender?.id === currentUserId ||
+            contextMenu.item.senderId === currentUserId) && (
+            <button
+              className="message-context-delete"
+              type="button"
+              role="menuitem"
+              onClick={() => deleteMessage(contextMenu.item.id)}
+            >
+              <Icon>delete</Icon>
+              <span>Hapus</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <form className="message-input" onSubmit={sendMessage}>
         <div className="message-action-group">
@@ -503,7 +657,23 @@ function ChatRoom() {
             )}
           </div>
         </div>
-        <div className={`message-input-box${selectedAttachment ? ' has-attachment' : ''}`}>
+        <div className={`message-input-box${selectedAttachment || replyTo ? ' has-attachment' : ''}`}>
+          {replyTo && (
+            <div className="reply-composer-preview">
+              <div>
+                <strong>Membalas {replyTo.sender?.name || 'pesan'}</strong>
+                <span>{getMessagePreview(replyTo)}</span>
+              </div>
+              <button
+                type="button"
+                aria-label="Batal membalas"
+                title="Batal membalas"
+                onClick={() => setReplyTo(null)}
+              >
+                <Icon>close</Icon>
+              </button>
+            </div>
+          )}
           {selectedAttachment && (
             <div className="attachment-preview">
               <Icon>

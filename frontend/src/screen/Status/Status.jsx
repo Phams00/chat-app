@@ -125,6 +125,7 @@ function Status() {
     [currentUser, statusGroups],
   );
   const selectedStatus = allStatuses.find(({ id }) => id === selectedStatusId);
+  const selectedStatusIndex = allStatuses.findIndex(({ id }) => id === selectedStatusId);
 
   useEffect(() => {
     let active = true;
@@ -188,6 +189,11 @@ function Status() {
   function openStatus(status) {
     setSelectedStatusId(status.id);
     setComposerOpen(false);
+  }
+
+  function moveStatus(direction) {
+    const nextStatus = allStatuses[selectedStatusIndex + direction];
+    if (nextStatus) openStatus(nextStatus);
   }
 
   return (
@@ -312,6 +318,30 @@ function Status() {
           </form>
         ) : selectedStatus ? (
           <article className={`status-viewer${selectedStatus.mediaType === 'image' ? ' has-image' : ''}`}>
+            {allStatuses.length > 1 && (
+              <>
+                <button
+                  className="status-viewer-arrow status-viewer-arrow-left"
+                  type="button"
+                  aria-label="Pooddle sebelumnya"
+                  title="Pooddle sebelumnya"
+                  disabled={selectedStatusIndex <= 0}
+                  onClick={() => moveStatus(-1)}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+                </button>
+                <button
+                  className="status-viewer-arrow status-viewer-arrow-right"
+                  type="button"
+                  aria-label="Pooddle berikutnya"
+                  title="Pooddle berikutnya"
+                  disabled={selectedStatusIndex >= allStatuses.length - 1}
+                  onClick={() => moveStatus(1)}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                </button>
+              </>
+            )}
             <div className="status-viewer-progress" aria-hidden="true">
               <span />
             </div>

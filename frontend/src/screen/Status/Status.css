@@ -359,6 +359,50 @@
   color: #2b1e16;
 }
 
+.status-viewer-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 38%);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.status-viewer-arrow:hover:not(:disabled) {
+  background: rgb(0 0 0 / 65%);
+}
+
+.status-viewer-arrow:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.status-viewer-arrow:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.status-viewer-arrow .material-symbols-outlined {
+  font-size: 28px;
+}
+
+.status-viewer-arrow-left {
+  left: 12px;
+}
+
+.status-viewer-arrow-right {
+  right: 12px;
+}
+
 .status-viewer.has-image {
   background: #171412;
   color: #fff;

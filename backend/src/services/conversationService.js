@@ -68,6 +68,14 @@ async function listConversations(userId) {
   }));
 }
 
+async function getLastMessage(conversationId) {
+  return prisma.message.findFirst({
+    where: { conversationId },
+    orderBy: { createdAt: 'desc' },
+    include: { sender: { select: { id: true, name: true, avatarUrl: true } } },
+  });
+}
+
 // Pastikan user memang anggota conversation sebelum boleh lihat/kirim pesan
 async function assertMember(conversationId, userId) {
   const member = await prisma.conversationMember.findUnique({
@@ -97,4 +105,10 @@ async function getConversation(conversationId, userId) {
   };
 }
 
-module.exports = { getOrCreateDirectConversation, listConversations, getConversation, assertMember };
+module.exports = {
+  getOrCreateDirectConversation,
+  listConversations,
+  getLastMessage,
+  getConversation,
+  assertMember,
+};

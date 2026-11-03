@@ -86,8 +86,22 @@ function ChatList() {
       );
     }
 
+    function handleMessageDeleted({ conversationId, lastMessage }) {
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.conversationId === conversationId
+            ? { ...conversation, lastMessage }
+            : conversation,
+        ),
+      );
+    }
+
     socket.on('new_message', handleNewMessage);
-    return () => socket.off('new_message', handleNewMessage);
+    socket.on('message_deleted', handleMessageDeleted);
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('message_deleted', handleMessageDeleted);
+    };
   }, []);
 
   const filteredConversations = useMemo(() => {
