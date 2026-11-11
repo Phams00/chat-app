@@ -32,6 +32,8 @@ function formatConversationTime(dateString) {
 }
 
 function getLastMessagePreview(conversation, currentUserId) {
+  if (conversation.isIncomingContactRequest) return 'Permintaan kontak · Buka untuk simpan atau buang';
+  if (conversation.isOutgoingContactRequest) return 'Menunggu konfirmasi kontak';
   const lastMessage = conversation.lastMessage;
   if (!lastMessage) return 'Belum ada pesan';
 
@@ -91,7 +93,13 @@ function ConversationList({
           conversation.members?.[0];
         const displayName = otherMember?.name || conversation.name || 'Group chat';
         const avatarColor = avatarColors[displayName.length % avatarColors.length];
-        const isOnline = Boolean(otherMember && onlineUsers.has(otherMember.id));
+        const isBlockedByOther = conversation.type === 'direct' && conversation.isBlockedByOther;
+        const isPendingContactRequest = conversation.type === 'direct' &&
+          (conversation.isIncomingContactRequest || conversation.isOutgoingContactRequest);
+        const isOnline = Boolean(
+          !isBlockedByOther && !isPendingContactRequest &&
+          otherMember && onlineUsers.has(otherMember.id),
+        );
 
         return (
           <button
@@ -101,12 +109,28 @@ function ConversationList({
             onClick={() => onOpen(conversation.conversationId)}
           >
             <span
-              className={`avatar${isOnline ? ' online' : ''}`}
+              className={`avatar${isOnline ? ' online' : ''}${isBlockedByOther ? ' blocked' : ''}${conversation.isOutgoingContactRequest && !isBlockedByOther ? ' pending-contact' : ''}`}
               style={{
                 '--avatar-start': avatarColor,
               }}
             >
-              {otherMember?.avatarUrl ? (
+              {isBlockedByOther ? (
+                <span
+                  className="material-symbols-outlined chat-list-blocked-icon"
+                  aria-label="Anda diblokir oleh kontak ini"
+                  title="Anda diblokir oleh kontak ini"
+                >
+                  block
+                </span>
+              ) : conversation.isOutgoingContactRequest ? (
+                <span
+                  className="chat-list-pending-icon"
+                  aria-label="Permintaan kontak belum disimpan"
+                  title="Permintaan kontak belum disimpan"
+                >
+                  ?
+                </span>
+              ) : otherMember?.avatarUrl ? (
                 <img src={getMediaUrl(otherMember.avatarUrl)} alt="" />
               ) : (
                 getInitials(displayName)
@@ -115,7 +139,14 @@ function ConversationList({
 
             <span className="chat-copy">
               <span className="chat-topline">
-                <span className="chat-name">{displayName}</span>
+                <span className="chat-name">
+                  {displayName}
+                  {conversation.isPinned && (
+                    <span className="material-symbols-outlined chat-favorite-icon" aria-label="Favorit">
+                      star
+                    </span>
+                  )}
+                </span>
                 <span className="chat-time">
                   {formatConversationTime(conversation.lastMessage?.createdAt)}
                 </span>

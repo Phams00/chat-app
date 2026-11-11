@@ -105,6 +105,20 @@ function ChatRoom() {
   const enterToSend = usePreferencesStore((state) => state.preferences.enterToSend);
   const onlineUsers = usePresenceStore((state) => state.onlineUsers);
   const [otherUser, setOtherUser] = useState(null);
+  const [conversationType, setConversationType] = useState(null);
+  const [conversationSettings, setConversationSettings] = useState({
+    isFavorite: false,
+    isBlockedByMe: false,
+    isBlockedByOther: false,
+    isContactSavedByMe: false,
+    isContactSavedByOther: false,
+    isIncomingContactRequest: false,
+    isOutgoingContactRequest: false,
+  });
+  const [contactProfile, setContactProfile] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [actionInProgress, setActionInProgress] = useState(false);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState(null);
@@ -128,6 +142,7 @@ function ChatRoom() {
   const typingTimeoutRef = useRef(null);
   const typingActiveRef = useRef(false);
   const deletedMessageIdsRef = useRef(new Set());
+  const clearedAtRef = useRef(null);
   const messageElementsRef = useRef(new Map());
   const highlightTimeoutRef = useRef(null);
 
@@ -155,8 +170,17 @@ function ChatRoom() {
   const loading = Boolean(conversationId) && (!loadStateIsCurrent || conversationLoad.loading);
   const loadError = conversationId && loadStateIsCurrent ? conversationLoad.error : '';
   const activeOtherUser = !conversationId || loading || loadError ? null : otherUser;
-  const canCompose = Boolean(conversationId && !loading && activeOtherUser);
-  const isOnline = Boolean(activeOtherUser && onlineUsers.has(activeOtherUser.id));
+  const canCompose = Boolean(
+    conversationId && !loading && activeOtherUser &&
+    !conversationSettings.isBlockedByMe &&
+    !conversationSettings.isBlockedByOther,
+  );
+  const isOnline = Boolean(
+    activeOtherUser &&
+    conversationSettings.isContactSavedByMe &&
+    conversationSettings.isContactSavedByOther &&
+    onlineUsers.has(activeOtherUser.id),
+  );
 
   useEffect(() => {
     connectSocket(token);
@@ -165,6 +189,7 @@ function ChatRoom() {
   useEffect(() => {
     if (!conversationId) return undefined;
     let active = true;
+    clearedAtRef.current = null;
 
     async function loadConversation() {
       try {
@@ -177,14 +202,31 @@ function ChatRoom() {
         const other = conversationResponse.data.members.find(
           (member) => member.id !== currentUserId,
         );
+        setConversationType(conversationResponse.data.type);
+        setProfileOpen(false);
+        setContactProfile(null);
+        const clearedAt = clearedAtRef.current || conversationResponse.data.clearedAt;
+        clearedAtRef.current = clearedAt;
         setOtherUser(other || null);
+        setConversationSettings({
+          isFavorite: conversationResponse.data.isFavorite,
+          isBlockedByMe: conversationResponse.data.isBlockedByMe,
+          isBlockedByOther: conversationResponse.data.isBlockedByOther,
+          isContactSavedByMe: conversationResponse.data.isContactSavedByMe,
+          isContactSavedByOther: conversationResponse.data.isContactSavedByOther,
+          isIncomingContactRequest: conversationResponse.data.isIncomingContactRequest,
+          isOutgoingContactRequest: conversationResponse.data.isOutgoingContactRequest,
+        });
         setMessages((current) => {
           const liveMessages = current.filter(
             (item) => item.conversationId === conversationId,
           );
           const uniqueMessages = new Map(
             [...messagesResponse.data, ...liveMessages]
-              .filter((item) => !deletedMessageIdsRef.current.has(item.id))
+              .filter((item) =>
+                !deletedMessageIdsRef.current.has(item.id) &&
+                (!clearedAt || new Date(item.createdAt) > new Date(clearedAt)),
+              )
               .map((item) => [item.id, item]),
           );
           return [...uniqueMessages.values()].sort(
@@ -218,6 +260,10 @@ function ChatRoom() {
 
     function handleNewMessage(newMessage) {
       if (newMessage.conversationId !== conversationId) return;
+      if (
+        clearedAtRef.current &&
+        new Date(newMessage.createdAt) <= new Date(clearedAtRef.current)
+      ) return;
 
       setMessages((current) =>
         current.some((item) => item.id === newMessage.id)
@@ -271,6 +317,52 @@ function ChatRoom() {
     function handleMessageError(payload) {
       setError(payload.error || 'Pesan tidak dapat dikirim. Coba lagi.');
     }
+    async function handleConversationBlockUpdated(payload) {
+      if (payload.conversationId !== conversationId) return;
+      setOtherTyping(false);
+      try {
+        const response = await api.get(`/conversations/${conversationId}`);
+        setConversationSettings({
+          isFavorite: response.data.isFavorite,
+          isBlockedByMe: response.data.isBlockedByMe,
+          isBlockedByOther: response.data.isBlockedByOther,
+          isContactSavedByMe: response.data.isContactSavedByMe,
+          isContactSavedByOther: response.data.isContactSavedByOther,
+          isIncomingContactRequest: response.data.isIncomingContactRequest,
+          isOutgoingContactRequest: response.data.isOutgoingContactRequest,
+        });
+      } catch (requestError) {
+        setError(requestError.response?.data?.error || 'Info blokir belum dapat diperbarui.');
+      }
+    }
+    async function handleConversationContactUpdated(payload) {
+      if (payload.conversationId !== conversationId) return;
+      try {
+        const response = await api.get(`/conversations/${conversationId}`);
+        const updatedOtherUser = response.data.members.find(
+          (member) => member.id !== currentUserId,
+        );
+        setOtherUser(updatedOtherUser || null);
+        setConversationSettings((current) => ({
+          ...current,
+          isContactSavedByMe: response.data.isContactSavedByMe,
+          isContactSavedByOther: response.data.isContactSavedByOther,
+          isIncomingContactRequest: response.data.isIncomingContactRequest,
+          isOutgoingContactRequest: response.data.isOutgoingContactRequest,
+        }));
+      } catch (requestError) {
+        setError(requestError.response?.data?.error || 'Permintaan kontak belum diperbarui.');
+      }
+    }
+    function handleConversationCleared(payload) {
+      if (payload.conversationId !== conversationId) return;
+      clearedAtRef.current = payload.clearedAt;
+      deletedMessageIdsRef.current.clear();
+      setMessages([]);
+      setReplyTo(null);
+      setSelectedAttachment(null);
+      setMessage('');
+    }
 
     socket.on('new_message', handleNewMessage);
     socket.on('user_typing', handleUserTyping);
@@ -278,6 +370,9 @@ function ChatRoom() {
     socket.on('message_read', handleMessageRead);
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_error', handleMessageError);
+    socket.on('conversation_block_updated', handleConversationBlockUpdated);
+    socket.on('conversation_contact_updated', handleConversationContactUpdated);
+    socket.on('conversation_cleared', handleConversationCleared);
     socket.emit('join_conversation', conversationId);
 
     return () => {
@@ -287,6 +382,9 @@ function ChatRoom() {
       socket.off('message_read', handleMessageRead);
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('message_error', handleMessageError);
+      socket.off('conversation_block_updated', handleConversationBlockUpdated);
+      socket.off('conversation_contact_updated', handleConversationContactUpdated);
+      socket.off('conversation_cleared', handleConversationCleared);
     };
   }, [conversationId, currentUserId, socket]);
 
@@ -448,6 +546,149 @@ function ChatRoom() {
     setError('');
   }
 
+  async function openContactProfile() {
+    if (!activeOtherUser || conversationType !== 'direct') return;
+    setProfileOpen(true);
+    setContactProfile(null);
+    if (!conversationSettings.isContactSavedByMe ||
+      !conversationSettings.isContactSavedByOther ||
+      conversationSettings.isBlockedByMe ||
+      conversationSettings.isBlockedByOther) {
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    try {
+      const response = await api.get(`/profile/${activeOtherUser.id}`);
+      setContactProfile(response.data);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Info kontak belum dapat dimuat.');
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  async function toggleFavorite() {
+    if (actionInProgress) return;
+    const isFavorite = !conversationSettings.isFavorite;
+    setActionInProgress(true);
+    setError('');
+    try {
+      await api.patch(`/conversations/${conversationId}/favorite`, { isFavorite });
+      setConversationSettings((current) => ({ ...current, isFavorite }));
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Favorit belum dapat diperbarui.');
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function toggleBlock() {
+    if (!activeOtherUser || actionInProgress) return;
+    const isBlocked = !conversationSettings.isBlockedByMe;
+    const action = isBlocked ? 'memblokir' : 'membuka blokir';
+    if (!window.confirm(`Yakin ingin ${action} ${activeOtherUser.name}?`)) return;
+    setActionInProgress(true);
+    setError('');
+    try {
+      const response = await api.patch(`/conversations/${conversationId}/block`, { isBlocked });
+      setConversationSettings({
+        isFavorite: response.data.isFavorite,
+        isBlockedByMe: response.data.isBlockedByMe,
+        isBlockedByOther: response.data.isBlockedByOther,
+        isContactSavedByMe: response.data.isContactSavedByMe,
+        isContactSavedByOther: response.data.isContactSavedByOther,
+        isIncomingContactRequest: response.data.isIncomingContactRequest,
+        isOutgoingContactRequest: response.data.isOutgoingContactRequest,
+      });
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Status blokir belum dapat diperbarui.');
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function acceptContactRequest() {
+    if (!activeOtherUser || actionInProgress) return;
+    setActionInProgress(true);
+    setError('');
+    try {
+      await api.post(`/contacts/${activeOtherUser.id}/accept`);
+      setConversationSettings((current) => ({
+        ...current,
+        isContactSavedByMe: true,
+        isContactSavedByOther: true,
+        isIncomingContactRequest: false,
+        isOutgoingContactRequest: false,
+      }));
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Kontak belum dapat disimpan.');
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function discardContactRequest() {
+    if (!activeOtherUser || actionInProgress) return;
+    if (!window.confirm(`Buang permintaan kontak dari ${activeOtherUser.name}?`)) return;
+    setActionInProgress(true);
+    setError('');
+    try {
+      await api.delete(`/contacts/${activeOtherUser.id}/request`);
+      window.dispatchEvent(new CustomEvent('conversation-removed', {
+        detail: { conversationId, contactUserId: activeOtherUser.id },
+      }));
+      navigate('/');
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Permintaan kontak belum dapat dibuang.');
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function clearChat() {
+    if (actionInProgress || !window.confirm('Hapus semua pesan dari chat ini di akunmu?')) return;
+    setActionInProgress(true);
+    setError('');
+    try {
+      const response = await api.delete(`/conversations/${conversationId}/messages`);
+      clearedAtRef.current = response.data.clearedAt;
+      deletedMessageIdsRef.current.clear();
+      setMessages([]);
+      setReplyTo(null);
+      setSelectedAttachment(null);
+      setMessage('');
+      setProfileOpen(false);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Chat belum dapat dibersihkan.');
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
+  async function deleteContact() {
+    if (!activeOtherUser || actionInProgress) return;
+    if (!window.confirm(
+      `Hapus ${activeOtherUser.name} dari kontakmu dan hapus riwayat chat dari akunmu?`,
+    )) {
+      return;
+    }
+    setActionInProgress(true);
+    setError('');
+    try {
+      await api.delete(`/contacts/${activeOtherUser.id}`);
+      window.dispatchEvent(new CustomEvent('conversation-removed', {
+        detail: { conversationId, contactUserId: activeOtherUser.id },
+      }));
+      setProfileOpen(false);
+      navigate('/');
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Kontak belum dapat dihapus.');
+    } finally {
+      setActionInProgress(false);
+    }
+  }
+
   function avatar(name, avatarUrl, className = '') {
     return (
       <span className={className || 'message-avatar'}>
@@ -471,22 +712,63 @@ function ChatRoom() {
           >
             <Icon>arrow_back</Icon>
           </button>
-          <div className="chat-room-avatar">
-            {avatar(activeOtherUser?.name || '', activeOtherUser?.avatarUrl, 'chat-room-avatar-image')}
-            {isOnline && <span className="chat-room-online" />}
-          </div>
-          <div>
-            <h2>{activeOtherUser?.name || 'Pilih percakapan'}</h2>
-            <p>
-              {activeOtherUser
-                ? otherTyping
-                  ? 'Mengetik...'
-                  : isOnline
-                    ? 'Online'
-                    : 'Offline'
-                : 'Chat App'}
-            </p>
-          </div>
+          <button
+            className="chat-contact-profile-button"
+            type="button"
+            onClick={openContactProfile}
+            disabled={!activeOtherUser || conversationType !== 'direct'}
+            aria-label={`Info kontak ${activeOtherUser?.name || ''}`}
+          >
+            <span className="chat-room-avatar">
+              {conversationSettings.isBlockedByOther ? (
+                <span
+                  className="chat-room-avatar-image blocked-profile-icon"
+                  aria-label="Anda diblokir oleh kontak ini"
+                  title="Anda diblokir oleh kontak ini"
+                >
+                  <Icon>block</Icon>
+                </span>
+              ) : conversationSettings.isOutgoingContactRequest ? (
+                <span
+                  className="chat-room-avatar-image pending-profile-icon"
+                  aria-label="Permintaan kontak belum disimpan"
+                  title="Permintaan kontak belum disimpan"
+                >
+                  ?
+                </span>
+              ) : avatar(activeOtherUser?.name || '', activeOtherUser?.avatarUrl, 'chat-room-avatar-image')}
+              {isOnline && !conversationSettings.isBlockedByOther &&
+                !conversationSettings.isOutgoingContactRequest && (
+                <span className="chat-room-online" />
+              )}
+            </span>
+            <span className="chat-room-contact-copy">
+              <strong>{activeOtherUser?.name || 'Pilih percakapan'}</strong>
+              <span className={
+                conversationSettings.isBlockedByOther
+                  ? 'is-blocked'
+                  : !conversationSettings.isContactSavedByMe ||
+                      !conversationSettings.isContactSavedByOther
+                    ? 'is-pending'
+                    : ''
+              }>
+                {activeOtherUser
+                  ? conversationSettings.isBlockedByOther
+                    ? 'Anda telah diblokir'
+                    : !conversationSettings.isContactSavedByMe ||
+                        !conversationSettings.isContactSavedByOther
+                      ? conversationSettings.isOutgoingContactRequest
+                        ? 'Menunggu konfirmasi kontak'
+                        : 'Permintaan kontak'
+                    : otherTyping
+                      ? 'Mengetik...'
+                      : isOnline
+                        ? 'Online'
+                        : 'Offline'
+                  : 'Chat App'}
+              </span>
+            </span>
+          </button>
         </div>
 
         <div className="chat-room-actions">
@@ -499,6 +781,100 @@ function ChatRoom() {
         </div>
       </header>
 
+      {profileOpen && activeOtherUser && (
+        <div
+          className="contact-profile-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setProfileOpen(false);
+          }}
+        >
+          <section
+            className="chat-contact-profile"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chat-contact-profile-title"
+          >
+            <header>
+              <h2 id="chat-contact-profile-title">Info kontak</h2>
+              <button type="button" aria-label="Tutup info kontak" onClick={() => setProfileOpen(false)}>
+                <Icon>close</Icon>
+              </button>
+            </header>
+            <div className="chat-contact-profile-details">
+              <span className={`chat-contact-profile-avatar${conversationSettings.isBlockedByOther ? ' is-blocked' : conversationSettings.isOutgoingContactRequest ? ' is-pending-contact' : ''}`}>
+                {conversationSettings.isBlockedByOther ? (
+                  <Icon>block</Icon>
+                ) : conversationSettings.isOutgoingContactRequest ? (
+                  <span className="pending-profile-question">?</span>
+                ) : activeOtherUser?.avatarUrl ? (
+                  <img src={getMediaUrl(activeOtherUser.avatarUrl)} alt="" />
+                ) : getInitials(activeOtherUser?.name)}
+              </span>
+              <h3>{activeOtherUser?.name}</h3>
+              {profileLoading ? (
+                <p>Memuat info kontak...</p>
+              ) : !conversationSettings.isContactSavedByMe ||
+                !conversationSettings.isContactSavedByOther ||
+                conversationSettings.isBlockedByMe ||
+                conversationSettings.isBlockedByOther ? (
+                <p>Info profil dan status hanya tersedia setelah kontak diterima.</p>
+              ) : contactProfile ? (
+                <div className="chat-contact-profile-info">
+                  {contactProfile.phoneNumber && <p>{contactProfile.phoneNumber}</p>}
+                  {contactProfile.username && <p>@{contactProfile.username}</p>}
+                  {contactProfile.about && <p>{contactProfile.about}</p>}
+                  {contactProfile.link && (
+                    <a href={contactProfile.link} target="_blank" rel="noreferrer">
+                      {contactProfile.link}
+                    </a>
+                  )}
+                  {!contactProfile.phoneNumber && !contactProfile.username &&
+                    !contactProfile.about && !contactProfile.link && (
+                      <p>Belum ada info tambahan.</p>
+                    )}
+                </div>
+              ) : <p>Info kontak belum tersedia.</p>}
+            </div>
+            {!conversationSettings.isIncomingContactRequest &&
+              !conversationSettings.isOutgoingContactRequest && (
+                <div className="chat-contact-actions">
+              <button type="button" disabled={actionInProgress} onClick={toggleFavorite}>
+                <Icon>{conversationSettings.isFavorite ? 'star' : 'star_outline'}</Icon>
+                {conversationSettings.isFavorite ? 'Hapus favorit' : 'Tambahkan ke favorit'}
+              </button>
+              <button
+                className="chat-contact-danger"
+                type="button"
+                disabled={actionInProgress}
+                onClick={clearChat}
+              >
+                <Icon>delete_sweep</Icon>
+                Hapus chat dari akun ini
+              </button>
+              <button
+                className="chat-contact-danger"
+                type="button"
+                disabled={actionInProgress}
+                onClick={toggleBlock}
+              >
+                <Icon>{conversationSettings.isBlockedByMe ? 'person_check' : 'block'}</Icon>
+                {conversationSettings.isBlockedByMe ? 'Buka blokir kontak' : 'Blokir kontak'}
+              </button>
+              <button
+                className="chat-contact-danger"
+                type="button"
+                disabled={actionInProgress}
+                onClick={deleteContact}
+              >
+                <Icon>person_remove</Icon>
+                Hapus kontak
+              </button>
+                </div>
+              )}
+          </section>
+        </div>
+      )}
+
       <div className="message-thread" ref={threadRef} aria-live="polite">
         {!conversationId && (
           <div className="chat-room-state chat-room-empty-state">
@@ -507,6 +883,41 @@ function ChatRoom() {
           </div>
         )}
         {loading && <p className="chat-room-state">Memuat pesan...</p>}
+        {!loading && conversationSettings.isIncomingContactRequest && (
+          <div className="chat-contact-request" role="status">
+            <p><strong>{activeOtherUser?.name}</strong> menambahkanmu ke kontak.</p>
+            <p>Kalian tetap bisa mengirim pesan. Simpan kontak agar dapat melihat info profil dan status.</p>
+            <div>
+              <button
+                type="button"
+                disabled={actionInProgress}
+                onClick={acceptContactRequest}
+              >
+                {actionInProgress ? 'Menyimpan...' : 'Simpan'}
+              </button>
+              <button
+                className="chat-contact-request-discard"
+                type="button"
+                disabled={actionInProgress}
+                onClick={discardContactRequest}
+              >
+                Buang
+              </button>
+            </div>
+          </div>
+        )}
+        {!loading && conversationSettings.isOutgoingContactRequest && (
+          <p className="chat-contact-request-waiting" role="status">
+            Permintaan kontak terkirim. Menunggu {activeOtherUser?.name} menyimpan kontakmu.
+          </p>
+        )}
+        {!loading && (conversationSettings.isBlockedByOther || conversationSettings.isBlockedByMe) && (
+          <p className="chat-blocked-notice" role="status">
+            {conversationSettings.isBlockedByOther
+              ? 'Anda telah diblokir oleh kontak ini. Kalian tidak dapat saling mengirim pesan atau melihat status.'
+              : 'Kamu memblokir kontak ini. Kalian tidak dapat saling mengirim pesan atau melihat status.'}
+          </p>
+        )}
         {!loading && loadError && <p className="chat-room-state chat-room-error" role="alert">{loadError}</p>}
         {conversationId && !loading && error && (
           <p className="chat-room-state chat-room-error" role="alert">{error}</p>
@@ -557,7 +968,9 @@ function ChatRoom() {
               }}
               onContextMenu={(event) => openMessageMenu(event, item)}
             >
-              {avatar(item.sender?.name || otherUser?.name || '', item.sender?.avatarUrl)}
+              {conversationSettings.isOutgoingContactRequest ? (
+                <span className="message-avatar pending-message-avatar" aria-label="Permintaan kontak belum disimpan">?</span>
+              ) : avatar(item.sender?.name || otherUser?.name || '', item.sender?.avatarUrl)}
               <div className="incoming-content">
                 <div className="incoming-bubble">
                   {item.replyTo && (
@@ -607,7 +1020,7 @@ function ChatRoom() {
         </div>
       )}
 
-      <form className="message-input" onSubmit={sendMessage}>
+      <form className={`message-input${canCompose ? '' : ' is-disabled'}`} onSubmit={sendMessage}>
         <div className="message-action-group">
           <input
             ref={fileInputRef}

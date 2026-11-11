@@ -26,6 +26,8 @@ model User {
   contacts       Contact[]            @relation("OwnerContacts")
   contactOf      Contact[]            @relation("ContactOfUser")
   statuses       Status[]
+  blocksCreated  UserBlock[]           @relation("UserBlockBlocker")
+  blocksReceived UserBlock[]           @relation("UserBlockBlocked")
 
   @@map("users")
 }
@@ -50,6 +52,7 @@ model ConversationMember {
   isPinned       Boolean  @default(false) @map("is_pinned")
   isArchived     Boolean  @default(false) @map("is_archived")
   isBlocked      Boolean  @default(false) @map("is_blocked")
+  clearedAt      DateTime? @map("cleared_at")
   joinedAt       DateTime @default(now()) @map("joined_at")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -108,6 +111,18 @@ model Contact {
 
   @@unique([userId, contactUserId])
   @@map("contacts")
+}
+
+model UserBlock {
+  blockerId     String   @map("blocker_id")
+  blockedUserId String   @map("blocked_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  blocker     User @relation("UserBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedUser User @relation("UserBlockBlocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedUserId])
+  @@map("user_blocks")
 }
 
 model Status {

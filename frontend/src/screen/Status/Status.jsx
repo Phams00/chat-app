@@ -103,6 +103,8 @@ function Status() {
     socket.on('status_created', handleStatusCreated);
     socket.on('status_deleted', handleStatusDeleted);
     socket.on('contact_added', handleContactsChanged);
+    socket.on('contact_removed', handleContactsChanged);
+    socket.on('status_access_changed', handleContactsChanged);
     socket.on('connect', refreshStatuses);
     refreshStatuses();
 
@@ -111,6 +113,8 @@ function Status() {
       socket.off('status_created', handleStatusCreated);
       socket.off('status_deleted', handleStatusDeleted);
       socket.off('contact_added', handleContactsChanged);
+      socket.off('contact_removed', handleContactsChanged);
+      socket.off('status_access_changed', handleContactsChanged);
       socket.off('connect', refreshStatuses);
     };
   }, [currentUser?.id, token]);

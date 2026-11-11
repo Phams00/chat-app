@@ -2,6 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const prisma = require('../config/prisma');
 const { STATUS_DIR } = require('../config/upload');
+const { isBlockedBy } = require('./conversationService');
 
 function statusError(message, status = 400) {
   const err = new Error(message);
@@ -27,15 +28,34 @@ async function getStatusAudience(userId) {
       id: true,
       name: true,
       avatarUrl: true,
+      contactOf: { select: { userId: true } },
       contacts: { select: { contactUserId: true } },
     },
   });
   if (!owner) throw statusError('User tidak ditemukan', 404);
 
-  const { contacts, ...user } = owner;
+  const { contactOf, contacts, ...user } = owner;
+  const savedContactIds = new Set(contacts.map(({ contactUserId }) => contactUserId));
+  const visibleContacts = await Promise.all(
+    contactOf
+      .filter(({ userId: contactOwnerId }) => savedContactIds.has(contactOwnerId))
+      .map(async ({ userId: contactOwnerId }) => {
+        const [blockedByOwner, blockedByContact] = await Promise.all([
+          isBlockedBy(userId, contactOwnerId),
+          isBlockedBy(contactOwnerId, userId),
+        ]);
+        return {
+          userId: contactOwnerId,
+          isBlocked: blockedByOwner || blockedByContact,
+        };
+      }),
+  );
   return {
     user,
-    userIds: [userId, ...contacts.map(({ contactUserId }) => contactUserId)],
+    userIds: [
+      userId,
+      ...visibleContacts.filter(({ isBlocked }) => !isBlocked).map(({ userId: id }) => id),
+    ],
   };
 }
 
@@ -48,7 +68,28 @@ async function listStatuses(userId) {
       },
     },
   });
-  const contactUsers = contacts.map(({ contactUser }) => contactUser);
+  const contactUserIds = contacts.map(({ contactUser }) => contactUser.id);
+  const reciprocalContacts = contactUserIds.length
+    ? await prisma.contact.findMany({
+      where: { userId: { in: contactUserIds }, contactUserId: userId },
+      select: { userId: true },
+    })
+    : [];
+  const reciprocalUserIds = new Set(reciprocalContacts.map(({ userId: ownerId }) => ownerId));
+  const contactUsersWithBlockStatus = await Promise.all(
+    contacts
+      .filter(({ contactUser }) => reciprocalUserIds.has(contactUser.id))
+      .map(async ({ contactUser }) => {
+        const [blockedByOwner, blockedByContact] = await Promise.all([
+          isBlockedBy(contactUser.id, userId),
+          isBlockedBy(userId, contactUser.id),
+        ]);
+        return { user: contactUser, isBlocked: blockedByOwner || blockedByContact };
+      }),
+  );
+  const contactUsers = contactUsersWithBlockStatus
+    .filter(({ isBlocked }) => !isBlocked)
+    .map(({ user }) => user);
   const visibleUserIds = [userId, ...contactUsers.map(({ id }) => id)];
   const statuses = await prisma.status.findMany({
     where: {
@@ -115,16 +156,22 @@ async function getStatusMediaPath(requesterId, statusId) {
   if (!status || !status.mediaUrl) throw statusError('Status tidak ditemukan', 404);
 
   if (status.userId !== requesterId) {
-    const contact = await prisma.contact.findUnique({
+    const [blockedByOwner, blockedByRequester] = await Promise.all([
+      isBlockedBy(status.userId, requesterId),
+      isBlockedBy(requesterId, status.userId),
+    ]);
+    if (blockedByOwner || blockedByRequester) {
+      throw statusError('Kamu tidak dapat melihat status pengguna ini', 403);
+    }
+    const contactLinks = await prisma.contact.count({
       where: {
-        userId_contactUserId: {
-          userId: requesterId,
-          contactUserId: status.userId,
-        },
+        OR: [
+          { userId: requesterId, contactUserId: status.userId },
+          { userId: status.userId, contactUserId: requesterId },
+        ],
       },
-      select: { id: true },
     });
-    if (!contact) throw statusError('Kamu tidak memiliki akses ke status ini', 403);
+    if (contactLinks < 2) throw statusError('Kamu tidak memiliki akses ke status ini', 403);
   }
 
   return path.join(STATUS_DIR, path.basename(status.mediaUrl));

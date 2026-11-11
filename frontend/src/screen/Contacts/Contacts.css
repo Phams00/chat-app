@@ -240,6 +240,78 @@
   background: #fff0e6;
 }
 
+.incoming-contact-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.incoming-contact-item:hover {
+  background: #f8f6f4;
+}
+
+.incoming-contact-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.incoming-contact-copy strong,
+.incoming-contact-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.incoming-contact-copy strong {
+  color: #1b1c1b;
+  font-size: 13px;
+}
+
+.incoming-contact-copy > span {
+  color: #8d7168;
+  font-size: 12px;
+}
+
+.incoming-contact-actions {
+  display: flex;
+  grid-column: 2;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.incoming-contact-actions button {
+  min-height: 32px;
+  padding: 0 11px;
+  color: #594139;
+  background: #fff;
+  border: 1px solid #e4e2e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.incoming-contact-actions button:first-child {
+  color: #fff;
+  background: #ff6b35;
+  border-color: #ff6b35;
+}
+
+.incoming-contact-actions button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.incoming-contact-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .contact-avatar {
   position: relative;
   display: flex;
@@ -259,6 +331,31 @@
 .contact-section:nth-of-type(2n) .contact-avatar {
   color: #354c37;
   background: #d4e397;
+}
+
+.contact-section .contact-avatar.is-blocked {
+  color: #b42318;
+  background: #fff1f0;
+  border: 1px solid #f2c8c5;
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%);
+}
+
+.contact-section .contact-avatar.is-pending,
+.contact-profile-avatar.is-pending {
+  color: #7c5c41;
+  background: #f3eee6;
+  border: 1px solid #e6d9c9;
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 55%);
+}
+
+.contact-blocked-icon {
+  font-size: 23px;
+  font-variation-settings: 'FILL' 0, 'wght' 500;
+}
+
+.contact-pending-icon {
+  font-size: 23px;
+  font-weight: 600;
 }
 
 .contact-avatar img {
@@ -511,6 +608,23 @@
   object-fit: cover;
 }
 
+.contact-profile-avatar.is-blocked {
+  color: #b42318;
+  background: #fff1f0;
+  border: 1px solid #f2c8c5;
+  box-shadow: 0 8px 22px rgb(180 35 24 / 12%);
+}
+
+.contact-profile-avatar.is-blocked .material-symbols-outlined {
+  font-size: 44px;
+  font-variation-settings: 'FILL' 0, 'wght' 500;
+}
+
+.contact-profile-avatar.is-pending .material-symbols-outlined {
+  font-size: 44px;
+  font-weight: 600;
+}
+
 .contact-profile h2 {
   margin: 0;
   color: #1b1c1b;
@@ -522,6 +636,21 @@
   margin: 7px 0 22px;
   color: #8d7168;
   font-size: 14px;
+}
+
+.contact-profile > p.contact-blocked-notice {
+  margin: -12px 0 20px;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.contact-profile > p.contact-pending-notice {
+  max-width: 340px;
+  margin: 8px 0 22px;
+  color: #7c5c41;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .profile-actions {

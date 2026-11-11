@@ -2,21 +2,31 @@ const prisma = require('../config/prisma');
 const fs = require('fs/promises');
 const path = require('path');
 const { MESSAGE_UPLOAD_DIR } = require('../config/upload');
-const { assertMember } = require('./conversationService');
+const {
+  assertMember,
+  assertCanSendMessage,
+} = require('./conversationService');
 
-function toClientMessage(message, requesterId) {
+function toClientMessage(message, requesterId, clearedAt = null) {
   const { readReceiptVisible, ...clientMessage } = message;
   if (message.senderId === requesterId && !readReceiptVisible) {
     clientMessage.readAt = null;
+  }
+  if (clientMessage.replyTo) {
+    const { createdAt, ...replyTo } = clientMessage.replyTo;
+    clientMessage.replyTo = clearedAt && createdAt <= clearedAt ? null : replyTo;
   }
   return clientMessage;
 }
 
 async function getMessages(conversationId, userId) {
-  await assertMember(conversationId, userId);
+  const member = await assertMember(conversationId, userId);
 
   const messages = await prisma.message.findMany({
-    where: { conversationId },
+    where: {
+      conversationId,
+      ...(member.clearedAt ? { createdAt: { gt: member.clearedAt } } : {}),
+    },
     orderBy: { createdAt: 'asc' },
     include: {
       sender: { select: { id: true, name: true, avatarUrl: true } },
@@ -28,12 +38,13 @@ async function getMessages(conversationId, userId) {
           attachmentName: true,
           attachmentUrl: true,
           senderId: true,
+          createdAt: true,
           sender: { select: { id: true, name: true } },
         },
       },
     },
   });
-  return messages.map((message) => toClientMessage(message, userId));
+  return messages.map((message) => toClientMessage(message, userId, member.clearedAt));
 }
 
 async function getReplyTo(conversationId, replyToId) {
@@ -52,7 +63,7 @@ async function getReplyTo(conversationId, replyToId) {
 }
 
 async function saveMessage(conversationId, senderId, content, type = 'text', replyToId = null) {
-  await assertMember(conversationId, senderId);
+  const member = await assertCanSendMessage(conversationId, senderId);
   const validReplyToId = await getReplyTo(conversationId, replyToId);
 
   const message = await prisma.message.create({
@@ -67,16 +78,17 @@ async function saveMessage(conversationId, senderId, content, type = 'text', rep
           attachmentName: true,
           attachmentUrl: true,
           senderId: true,
+          createdAt: true,
           sender: { select: { id: true, name: true } },
         },
       },
     },
   });
-  return toClientMessage(message, senderId);
+  return toClientMessage(message, senderId, member.clearedAt);
 }
 
 async function saveAttachmentMessage(conversationId, senderId, file, caption, replyToId = null) {
-  await assertMember(conversationId, senderId);
+  const member = await assertCanSendMessage(conversationId, senderId);
   const validReplyToId = await getReplyTo(conversationId, replyToId);
 
   const type = file.mimetype.startsWith('image/')
@@ -104,12 +116,13 @@ async function saveAttachmentMessage(conversationId, senderId, file, caption, re
           attachmentName: true,
           attachmentUrl: true,
           senderId: true,
+          createdAt: true,
           sender: { select: { id: true, name: true } },
         },
       },
     },
   });
-  return toClientMessage(message, senderId);
+  return toClientMessage(message, senderId, member.clearedAt);
 }
 
 async function markAsRead(messageId, userId, showReadReceipt = true) {

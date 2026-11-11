@@ -41,7 +41,7 @@ function Contacts() {
       api.get('/contacts')
         .then((response) => {
           if (active && requestRevision === contactsRevisionRef.current) {
-            setContacts(response.data);
+            setContacts(response.data.contacts);
           }
         })
         .catch((requestError) => {
@@ -63,13 +63,30 @@ function Contacts() {
       setContacts((current) => upsertContact(current, contact));
     }
 
+    function handleContactRemoved({ contactUserId }) {
+      if (!contactUserId) return;
+      contactsRevisionRef.current += 1;
+      setContacts((current) =>
+        current.filter(({ contactUser }) => contactUser.id !== contactUserId),
+      );
+      setSelectedContactId((current) => current === contactUserId ? null : current);
+    }
+
     socket.on('contact_added', handleContactAdded);
+    socket.on('contact_request_received', refreshContacts);
+    socket.on('contact_removed', handleContactRemoved);
+    socket.on('contact_block_updated', refreshContacts);
+    socket.on('conversation_contact_updated', refreshContacts);
     socket.on('connect', refreshContacts);
     refreshContacts();
 
     return () => {
       active = false;
       socket.off('contact_added', handleContactAdded);
+      socket.off('contact_request_received', refreshContacts);
+      socket.off('contact_removed', handleContactRemoved);
+      socket.off('contact_block_updated', refreshContacts);
+      socket.off('conversation_contact_updated', refreshContacts);
       socket.off('connect', refreshContacts);
     };
   }, [token]);
@@ -280,35 +297,62 @@ function Contacts() {
               )}
             </div>
           ) : (
-            contactsBySection.map(([section, sectionContacts]) => (
-              <section className="contact-section" key={section} aria-label={`Kontak ${section}`}>
-                <h2 className="contact-section-title">{section}</h2>
-                {sectionContacts.map(({ id, contactUser }) => {
-                  const isOnline = onlineUsers.has(contactUser.id);
-                  const isSelected = contactUser.id === selectedContactId;
+            <>
+              {contactsBySection.map(([section, sectionContacts]) => (
+                <section className="contact-section" key={section} aria-label={`Kontak ${section}`}>
+                  <h2 className="contact-section-title">{section}</h2>
+                  {sectionContacts.map(({
+                    id,
+                    contactUser,
+                    isBlockedByOther,
+                    isContactSavedByOther,
+                  }) => {
+                    const isPending = !isContactSavedByOther;
+                    const isOnline = !isBlockedByOther && !isPending &&
+                      onlineUsers.has(contactUser.id);
+                    const isSelected = contactUser.id === selectedContactId;
 
-                  return (
-                    <button
-                      className={`contact-item${isSelected ? ' selected' : ''}`}
-                      key={id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => setSelectedContactId(contactUser.id)}
-                    >
-                      <span className="contact-avatar">
-                        {contactUser.avatarUrl ? (
-                          <img src={getMediaUrl(contactUser.avatarUrl)} alt="" />
-                        ) : (
-                          <span>{getInitials(contactUser.name)}</span>
-                        )}
-                        <i className={isOnline ? 'is-online' : ''} />
-                      </span>
-                      <span className="contact-name">{contactUser.name}</span>
-                    </button>
-                  );
-                })}
-              </section>
-            ))
+                    return (
+                      <button
+                        className={`contact-item${isSelected ? ' selected' : ''}`}
+                        key={id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedContactId(contactUser.id)}
+                      >
+                        <span className={`contact-avatar${isBlockedByOther ? ' is-blocked' : isPending ? ' is-pending' : ''}`}>
+                          {isBlockedByOther ? (
+                            <span
+                              className="material-symbols-outlined contact-blocked-icon"
+                              aria-label="Anda diblokir oleh kontak ini"
+                              title="Anda diblokir oleh kontak ini"
+                            >
+                              block
+                            </span>
+                          ) : isPending ? (
+                            <span
+                              className="material-symbols-outlined contact-pending-icon"
+                              aria-label="Permintaan kontak belum diterima"
+                              title="Permintaan kontak belum diterima"
+                            >
+                              ?
+                            </span>
+                          ) : contactUser.avatarUrl ? (
+                            <img src={getMediaUrl(contactUser.avatarUrl)} alt="" />
+                          ) : (
+                            <span>{getInitials(contactUser.name)}</span>
+                          )}
+                          {!isBlockedByOther && !isPending && (
+                            <i className={isOnline ? 'is-online' : ''} />
+                          )}
+                        </span>
+                        <span className="contact-name">{contactUser.name}</span>
+                      </button>
+                    );
+                  })}
+                </section>
+              ))}
+            </>
           )}
         </div>
       </aside>
@@ -324,8 +368,16 @@ function Contacts() {
             >
               <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
             </button>
-            <div className="contact-profile-avatar">
-              {selectedContact.contactUser.avatarUrl ? (
+            <div className={`contact-profile-avatar${selectedContact.isBlockedByOther ? ' is-blocked' : !selectedContact.isContactSavedByOther ? ' is-pending' : ''}`}>
+              {selectedContact.isBlockedByOther ? (
+                <span className="material-symbols-outlined" aria-label="Anda diblokir oleh kontak ini">
+                  block
+                </span>
+              ) : !selectedContact.isContactSavedByOther ? (
+                <span className="material-symbols-outlined" aria-label="Permintaan kontak belum diterima">
+                  ?
+                </span>
+              ) : selectedContact.contactUser.avatarUrl ? (
                 <img
                   src={getMediaUrl(selectedContact.contactUser.avatarUrl)}
                   alt={selectedContact.contactUser.name}
@@ -335,7 +387,17 @@ function Contacts() {
               )}
             </div>
             <h2>{selectedContact.contactUser.name}</h2>
-            <p>{selectedContact.contactUser.phoneNumber}</p>
+            {!selectedContact.isContactSavedByOther && (
+              <p className="contact-pending-notice">
+                Menunggu kontak menerima permintaan. Info profil dan status belum tersedia.
+              </p>
+            )}
+            {selectedContact.isContactSavedByOther && (
+              <p>{selectedContact.contactUser.phoneNumber}</p>
+            )}
+            {selectedContact.isBlockedByOther && (
+              <p className="contact-blocked-notice">Anda diblokir oleh kontak ini</p>
+            )}
             <div className="profile-actions">
               <button
                 type="button"

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const prisma = require('../config/prisma');
 const { AVATAR_DIR } = require('../config/upload');
+const { isBlockedBy } = require('./conversationService');
 
 const PROFILE_SELECT = {
   id: true,
@@ -115,12 +116,22 @@ async function getProfile(requesterId, targetId) {
   if (!user) throw fail('User tidak ditemukan', 404);
   if (requesterId === targetId) return user;
 
-  const isContact = await prisma.contact.findUnique({
-    where: { userId_contactUserId: { userId: requesterId, contactUserId: targetId } },
-  });
-
-  const { phoneNumber, ...publicProfile } = user;
-  return isContact ? user : publicProfile;
+  const [contactLinks, blockedByRequester, blockedByTarget] = await Promise.all([
+    prisma.contact.count({
+      where: {
+        OR: [
+          { userId: requesterId, contactUserId: targetId },
+          { userId: targetId, contactUserId: requesterId },
+        ],
+      },
+    }),
+    isBlockedBy(requesterId, targetId),
+    isBlockedBy(targetId, requesterId),
+  ]);
+  if (contactLinks < 2 || blockedByRequester || blockedByTarget) {
+    throw fail('Info profil hanya tersedia untuk kontak yang sudah diterima', 403);
+  }
+  return user;
 }
 
 async function updateProfile(userId, input) {

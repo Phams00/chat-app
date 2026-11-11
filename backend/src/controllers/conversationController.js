@@ -1,7 +1,7 @@
 const fs = require('fs');
 const conversationService = require('../services/conversationService');
 const messageService = require('../services/messageService');
-const { assertMember } = conversationService;
+const { assertCanSendMessage } = conversationService;
 const {
   MAX_ATTACHMENT_SIZE,
   MAX_VIDEO_SIZE,
@@ -60,7 +60,7 @@ async function deleteMessage(req, res) {
 
 async function uploadAttachment(req, res) {
   try {
-    await assertMember(req.params.id, req.user.id);
+    await assertCanSendMessage(req.params.id, req.user.id);
   } catch (err) {
     return res.status(403).json({ error: err.message });
   }
@@ -119,6 +119,60 @@ async function getOne(req, res) {
   }
 }
 
+async function setFavorite(req, res) {
+  try {
+    const result = await conversationService.setFavorite(
+      req.params.id,
+      req.user.id,
+      req.body.isFavorite,
+    );
+    req.app.get('io').to(`user:${req.user.id}`).emit('conversation_favorite_updated', {
+      conversationId: req.params.id,
+      isFavorite: result.isFavorite,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 400).json({ error: err.message });
+  }
+}
+
+async function setBlocked(req, res) {
+  try {
+    const result = await conversationService.setBlocked(
+      req.params.id,
+      req.user.id,
+      req.body.isBlocked,
+    );
+    const io = req.app.get('io');
+    io.to(req.params.id).emit('conversation_block_updated', {
+      conversationId: req.params.id,
+      blockedByUserId: req.user.id,
+      isBlocked: req.body.isBlocked,
+    });
+    io.to(`user:${result.otherUserId}`).emit('status_access_changed');
+    io.to(`user:${req.user.id}`).emit('contact_block_updated', {
+      conversationId: req.params.id,
+    });
+    io.to(`user:${result.otherUserId}`).emit('contact_block_updated', {
+      conversationId: req.params.id,
+    });
+    io.to(`user:${req.user.id}`).emit('status_access_changed');
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 400).json({ error: err.message });
+  }
+}
+
+async function clear(req, res) {
+  try {
+    const result = await conversationService.clearConversation(req.params.id, req.user.id);
+    req.app.get('io').to(`user:${req.user.id}`).emit('conversation_cleared', result);
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 400).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createOrGet,
   list,
@@ -126,4 +180,7 @@ module.exports = {
   deleteMessage,
   uploadAttachment,
   getOne,
+  setFavorite,
+  setBlocked,
+  clear,
 };

@@ -588,6 +588,70 @@ body {
   color: var(--app-text);
 }
 
+:root:is([data-theme='dark'], [data-theme='system']) .contact-avatar.is-blocked,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile-avatar.is-blocked,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-avatar-image.blocked-profile-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile-avatar.is-blocked,
+:root:is([data-theme='dark'], [data-theme='system']) .avatar.blocked,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-list-blocked-icon {
+  border-color: var(--app-border);
+  color: var(--app-danger);
+  background-color: var(--app-danger-soft);
+  box-shadow: inset 0 0 0 3px var(--app-surface);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-avatar.is-pending,
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile-avatar.is-pending,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-avatar-image.pending-profile-icon,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile-avatar.is-pending-contact,
+:root:is([data-theme='dark'], [data-theme='system']) .avatar.pending-contact,
+:root:is([data-theme='dark'], [data-theme='system']) .pending-message-avatar {
+  border-color: var(--app-border);
+  color: var(--app-text);
+  background-color: var(--app-surface-muted);
+  box-shadow: inset 0 0 0 3px var(--app-surface);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile > p.contact-blocked-notice {
+  color: var(--app-danger);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .contact-profile > p.contact-pending-notice,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-contact-copy > span.is-pending {
+  color: var(--app-text-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-room-contact-copy strong {
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile {
+  border-color: var(--app-border);
+  background-color: var(--app-surface-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile > header h2,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile-details h3 {
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile > header button {
+  color: var(--app-text);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile > header button:hover {
+  background-color: var(--app-surface);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile-details > p,
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile-info p {
+  color: var(--app-muted);
+}
+
+:root:is([data-theme='dark'], [data-theme='system']) .chat-contact-profile-info a {
+  color: var(--app-accent);
+}
+
 :root:is([data-theme='dark'], [data-theme='system']) .settings-storage-summary > .material-symbols-outlined {
   color: var(--app-success);
 }

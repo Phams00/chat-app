@@ -43,29 +43,114 @@ async function getOrCreateDirectConversation(userId, otherUserId) {
 }
 
 async function listConversations(userId) {
-  const memberships = await prisma.conversationMember.findMany({
-    where: { userId },
-    include: {
-      conversation: {
-        include: {
-          members: {
-            include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+  const [memberships, contacts, incomingContacts] = await Promise.all([
+    prisma.conversationMember.findMany({
+      where: { userId },
+      include: {
+        conversation: {
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: { id: true, name: true, phoneNumber: true, avatarUrl: true },
+                },
+              },
+            },
+            messages: { orderBy: { createdAt: 'desc' }, take: 1 },
           },
-          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
         },
       },
-    },
-    orderBy: { conversation: { createdAt: 'desc' } },
-  });
+      orderBy: { conversation: { createdAt: 'desc' } },
+    }),
+    prisma.contact.findMany({
+      where: { userId },
+      select: { contactUserId: true },
+    }),
+    prisma.contact.findMany({
+      where: { contactUserId: userId },
+      select: { userId: true },
+    }),
+  ]);
+  const contactUserIds = new Set(contacts.map(({ contactUserId }) => contactUserId));
+  const incomingUserIds = new Set(incomingContacts.map(({ userId: incomingUserId }) => incomingUserId));
+  const otherUserIds = [...new Set(memberships.flatMap(({ conversation }) =>
+    conversation.type === 'direct'
+      ? conversation.members
+        .filter(({ userId: memberUserId }) => memberUserId !== userId)
+        .map(({ userId: memberUserId }) => memberUserId)
+      : [],
+  ))];
+  const blocks = otherUserIds.length
+    ? await prisma.userBlock.findMany({
+      where: {
+        OR: [
+          { blockerId: userId, blockedUserId: { in: otherUserIds } },
+          { blockedUserId: userId, blockerId: { in: otherUserIds } },
+        ],
+      },
+      select: { blockerId: true, blockedUserId: true },
+    })
+    : [];
+  const blockedByMe = new Set(
+    blocks.filter(({ blockerId }) => blockerId === userId)
+      .map(({ blockedUserId }) => blockedUserId),
+  );
+  const blockedMe = new Set(
+    blocks.filter(({ blockedUserId }) => blockedUserId === userId)
+      .map(({ blockerId }) => blockerId),
+  );
 
-  return memberships.map((m) => ({
-    conversationId: m.conversation.id,
-    type: m.conversation.type,
-    isPinned: m.isPinned,
-    isArchived: m.isArchived,
-    lastMessage: m.conversation.messages[0] || null,
-    members: m.conversation.members.map((mem) => mem.user),
-  }));
+  return memberships
+    .filter((membership) => {
+      if (membership.conversation.type !== 'direct') return true;
+      const otherMember = membership.conversation.members.find(
+        ({ userId: memberUserId }) => memberUserId !== userId,
+      );
+      return otherMember && (
+        contactUserIds.has(otherMember.userId) || incomingUserIds.has(otherMember.userId)
+      );
+    })
+    .map((membership) => {
+      const { conversation } = membership;
+      const otherMember = conversation.members.find(
+        ({ userId: memberUserId }) => memberUserId !== userId,
+      );
+      const isContactSavedByMe = Boolean(otherMember && contactUserIds.has(otherMember.userId));
+      const isContactSavedByOther = Boolean(otherMember && incomingUserIds.has(otherMember.userId));
+      const isOutgoingContactRequest = isContactSavedByMe && !isContactSavedByOther;
+      const lastMessage = conversation.messages[0];
+      const members = conversation.members.map((conversationMember) => {
+        if (isOutgoingContactRequest && conversationMember.userId === otherMember?.userId) {
+          return {
+            ...conversationMember.user,
+            name: conversationMember.user.phoneNumber,
+            avatarUrl: null,
+          };
+        }
+        const publicMember = { ...conversationMember.user };
+        delete publicMember.phoneNumber;
+        return publicMember;
+      });
+
+      return {
+        conversationId: conversation.id,
+        type: conversation.type,
+        isPinned: membership.isPinned,
+        isArchived: membership.isArchived,
+        clearedAt: membership.clearedAt,
+        isBlockedByMe: Boolean(otherMember && blockedByMe.has(otherMember.userId)),
+        isBlockedByOther: Boolean(otherMember && blockedMe.has(otherMember.userId)),
+        isContactSavedByMe,
+        isContactSavedByOther,
+        isIncomingContactRequest: !isContactSavedByMe && isContactSavedByOther,
+        isOutgoingContactRequest,
+        lastMessage: lastMessage &&
+          (!membership.clearedAt || lastMessage.createdAt > membership.clearedAt)
+          ? lastMessage
+          : null,
+        members,
+      };
+    });
 }
 
 async function getLastMessage(conversationId) {
@@ -86,23 +171,196 @@ async function assertMember(conversationId, userId) {
 }
 
 async function getConversation(conversationId, userId) {
-  await assertMember(conversationId, userId);
-
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+        include: {
+          user: { select: { id: true, name: true, phoneNumber: true, avatarUrl: true } },
+        },
       },
     },
+  });
+  if (!conversation) throw new Error('Percakapan tidak ditemukan');
+  const member = conversation.members.find(({ userId: memberUserId }) => memberUserId === userId);
+  if (!member) throw new Error('Kamu bukan anggota percakapan ini');
+  const otherMember = conversation.members.find(({ userId: memberUserId }) =>
+    memberUserId !== userId,
+  );
+  const contactLinks = conversation.type === 'direct'
+    ? await prisma.contact.findMany({
+      where: {
+        OR: [
+          { userId, contactUserId: otherMember?.userId },
+          { userId: otherMember?.userId, contactUserId: userId },
+        ],
+      },
+      select: { userId: true },
+    })
+    : [];
+  const isContactSavedByMe = contactLinks.some(({ userId: ownerId }) => ownerId === userId);
+  const isContactSavedByOther = contactLinks.some(
+    ({ userId: ownerId }) => ownerId === otherMember?.userId,
+  );
+  const isOutgoingContactRequest = isContactSavedByMe && !isContactSavedByOther;
+  const [blockedByMe, blockedByOther] = conversation.type === 'direct' && otherMember
+    ? await Promise.all([
+      prisma.userBlock.findUnique({
+        where: {
+          blockerId_blockedUserId: { blockerId: userId, blockedUserId: otherMember.userId },
+        },
+        select: { blockerId: true },
+      }),
+      prisma.userBlock.findUnique({
+        where: {
+          blockerId_blockedUserId: { blockerId: otherMember.userId, blockedUserId: userId },
+        },
+        select: { blockerId: true },
+      }),
+    ])
+    : [null, null];
+  const members = conversation.members.map((conversationMember) => {
+    if (isOutgoingContactRequest && conversationMember.userId === otherMember?.userId) {
+      return {
+        ...conversationMember.user,
+        name: conversationMember.user.phoneNumber,
+        avatarUrl: null,
+      };
+    }
+    const publicMember = { ...conversationMember.user };
+    delete publicMember.phoneNumber;
+    return publicMember;
   });
 
   return {
     conversationId: conversation.id,
     type: conversation.type,
     name: conversation.name,
-    members: conversation.members.map((m) => m.user),
+    members,
+    isFavorite: member.isPinned,
+    isBlockedByMe: conversation.type === 'direct' && Boolean(blockedByMe),
+    isBlockedByOther: conversation.type === 'direct' && Boolean(blockedByOther),
+    isContactSavedByMe,
+    isContactSavedByOther,
+    isIncomingContactRequest: !isContactSavedByMe && isContactSavedByOther,
+    isOutgoingContactRequest,
+    clearedAt: member.clearedAt,
   };
+}
+
+async function assertCanSendMessage(conversationId, userId) {
+  const member = await assertMember(conversationId, userId);
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true, members: { select: { userId: true } } },
+  });
+  if (conversation?.type === 'direct') {
+    const otherMember = conversation.members.find(({ userId: memberUserId }) => memberUserId !== userId);
+    const block = otherMember
+      ? await prisma.userBlock.findFirst({
+        where: {
+          OR: [
+            { blockerId: userId, blockedUserId: otherMember.userId },
+            { blockerId: otherMember.userId, blockedUserId: userId },
+          ],
+        },
+        select: { blockerId: true },
+      })
+      : null;
+    if (block) {
+      const error = new Error(block.blockerId === userId
+        ? 'Kamu memblokir kontak ini dan tidak dapat mengirim pesan.'
+        : 'Anda telah diblokir dan tidak dapat mengirim pesan.');
+      error.status = 403;
+      throw error;
+    }
+  }
+  return member;
+}
+
+async function isBlockedBy(blockerId, blockedId) {
+  const block = await prisma.userBlock.findUnique({
+    where: { blockerId_blockedUserId: { blockerId, blockedUserId: blockedId } },
+    select: { blockerId: true },
+  });
+  return Boolean(block);
+}
+
+async function setFavorite(conversationId, userId, isFavorite) {
+  if (typeof isFavorite !== 'boolean') {
+    const error = new Error('Pilihan favorit tidak valid');
+    error.status = 400;
+    throw error;
+  }
+  const member = await assertMember(conversationId, userId);
+  await prisma.conversationMember.update({
+    where: { id: member.id },
+    data: { isPinned: isFavorite },
+  });
+  return { isFavorite };
+}
+
+async function setBlocked(conversationId, userId, isBlocked) {
+  if (typeof isBlocked !== 'boolean') {
+    const error = new Error('Pilihan blokir tidak valid');
+    error.status = 400;
+    throw error;
+  }
+  const member = await assertMember(conversationId, userId);
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true, members: { select: { userId: true } } },
+  });
+  if (conversation?.type !== 'direct') {
+    const error = new Error('Blokir hanya tersedia untuk chat pribadi');
+    error.status = 400;
+    throw error;
+  }
+  const otherMember = conversation.members.find(({ userId: memberUserId }) =>
+    memberUserId !== userId,
+  );
+  if (!otherMember) throw new Error('Kontak percakapan tidak ditemukan');
+
+  await prisma.$transaction(async (transaction) => {
+    await transaction.conversationMember.update({
+      where: { id: member.id },
+      data: { isBlocked },
+    });
+    if (isBlocked) {
+      await transaction.userBlock.upsert({
+        where: {
+          blockerId_blockedUserId: {
+            blockerId: userId,
+            blockedUserId: otherMember.userId,
+          },
+        },
+        create: {
+          blockerId: userId,
+          blockedUserId: otherMember.userId,
+        },
+        update: {},
+      });
+    } else {
+      await transaction.userBlock.deleteMany({
+        where: { blockerId: userId, blockedUserId: otherMember.userId },
+      });
+    }
+  });
+  const updatedConversation = await getConversation(conversationId, userId);
+  return {
+    ...updatedConversation,
+    otherUserId: updatedConversation.members.find(({ id }) => id !== userId)?.id,
+  };
+}
+
+async function clearConversation(conversationId, userId) {
+  const member = await assertMember(conversationId, userId);
+  const clearedAt = new Date();
+  await prisma.conversationMember.update({
+    where: { id: member.id },
+    data: { clearedAt },
+  });
+  return { conversationId, clearedAt };
 }
 
 module.exports = {
@@ -111,4 +369,9 @@ module.exports = {
   getLastMessage,
   getConversation,
   assertMember,
+  assertCanSendMessage,
+  isBlockedBy,
+  setFavorite,
+  setBlocked,
+  clearConversation,
 };
