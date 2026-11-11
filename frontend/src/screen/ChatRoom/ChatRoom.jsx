@@ -771,14 +771,6 @@ function ChatRoom() {
           </button>
         </div>
 
-        <div className="chat-room-actions">
-          <button type="button" title="Pencarian belum tersedia" aria-label="Cari pesan" disabled>
-            <Icon>search</Icon>
-          </button>
-          <button type="button" title="Panggilan belum tersedia" aria-label="Telepon" disabled>
-            <Icon>call</Icon>
-          </button>
-        </div>
       </header>
 
       {profileOpen && activeOtherUser && (
